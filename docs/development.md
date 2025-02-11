@@ -34,13 +34,7 @@ Modify `.env` with your database credentials and other configurations.
 
 Using Docker
 
-To start database
-
-```npm
-npm run db:dev:start
-```
-
-To restart database
+To start & restart database
 
 ```npm
 npm run db:dev:restart
