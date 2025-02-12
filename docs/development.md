@@ -65,19 +65,24 @@ Codebase Structure
 └── README.md # Project overview
 ```
 
-<!-- Useful Commands
+Useful Commands
 
-Running the App
+<!-- Running the App
 
 npm run start # Start in production mode
-npm run start:dev # Start in development mode
+npm run start:dev # Start in development mode -->
 
-Running Tests
+## Testing
 
-npm run test # Run unit tests
+```terminal
 npm run test:e2e # Run end-to-end tests
+```
 
-Linting & Formatting
+```terminal
+npm run test # Run unit tests
+```
+
+<!-- Linting & Formatting
 
 npm run lint # Check for linting errors
 npm run format # Format the codebase -->
