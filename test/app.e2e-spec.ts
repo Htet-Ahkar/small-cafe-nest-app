@@ -4,10 +4,23 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { PrismaService } from '../src/prisma/prisma.service';
 import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
+import { EditUserDto } from 'src/user/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
   let prismaService: PrismaService;
+
+  const userAt = 'userAt';
+  const token_userAt = `Bearer $S{${userAt}}`;
+
+  // helper function
+  const testEndpoint =
+    (endpoint: string) => async (body: object, expectedStatus: number) =>
+      await pactum
+        .spec()
+        .post(endpoint)
+        .withBody(body)
+        .expectStatus(expectedStatus);
 
   // Starting Logic
   beforeAll(async () => {
@@ -52,15 +65,6 @@ describe('App e2e', () => {
       { name: 'should throw if payload empty', body: {}, expectedStatus: 400 },
     ];
 
-    // helper function
-    const testEndpoint =
-      (endpoint: string) => async (body: object, expectedStatus: number) =>
-        await pactum
-          .spec()
-          .post(endpoint)
-          .withBody(body)
-          .expectStatus(expectedStatus);
-
     // test singnup logics
     describe('Signup', () => {
       const signupTest = testEndpoint('/auth/signup');
@@ -87,26 +91,52 @@ describe('App e2e', () => {
           .post('/auth/signin')
           .withBody(authDto)
           .expectStatus(200)
-          .stores('userAt', 'access_token')); // pactum's tocken store logic
+          .stores(userAt, 'access_token')); // pactum's tocken store logic
     });
   });
 
   describe('User', () => {
-    describe('Get User', () => {
-      it('should get current user', () => {});
+    describe('Get Me', () => {
+      it('should get current user', () => {
+        return pactum
+          .spec()
+          .get('/users/me')
+          .withHeaders({
+            Authorization: token_userAt,
+          })
+          .expectStatus(200);
+      });
     });
 
-    describe('Edit user', () => {});
+    describe('Edit user', () => {
+      const dto: EditUserDto = {
+        firstName: 'fristName',
+        email: 'email@gmail.com',
+      };
+
+      it('should edit user', () => {
+        return pactum
+          .spec()
+          .patch('/users')
+          .withHeaders({
+            Authorization: token_userAt,
+          })
+          .withBody(dto)
+          .expectStatus(200)
+          .expectBodyContains(dto.firstName)
+          .expectBodyContains(dto.email);
+      });
+    });
   });
 
   describe('Bookmarks', () => {
     describe('Create bookmark', () => {});
 
-    describe('Get bookmark', () => {});
+    describe('Get bookmarks', () => {});
 
     describe('Get bookmark by id', () => {});
 
-    describe('Edit bookmark', () => {});
+    describe('Edit bookmark by id', () => {});
 
     describe('Delete bookmark by id', () => {});
   });
