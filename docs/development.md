@@ -22,10 +22,10 @@ npm i
 
 ### 3. Set Up Environment Variables
 
-Copy the example environment file and update the values accordingly:
+Copy the dev environment file and update the values accordingly:
 
 ```terminal
-cp .env.example .env
+cp .env.dev .env
 ```
 
 Modify `.env` with your database credentials and other configurations.
