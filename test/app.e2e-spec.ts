@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
 import { PrismaService } from '../src/prisma/prisma.service';
 import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
@@ -81,7 +81,11 @@ describe('App e2e', () => {
       });
 
       it('should signup', () =>
-        pactum.spec().post(localRoute).withBody(authDto).expectStatus(201));
+        pactum
+          .spec()
+          .post(localRoute)
+          .withBody(authDto)
+          .expectStatus(HttpStatus.CREATED));
     });
 
     // test singnin logics
@@ -99,7 +103,7 @@ describe('App e2e', () => {
           .spec()
           .post(localRoute)
           .withBody(authDto)
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .stores(userAt, 'access_token')); // pactum's token store logic
     });
   });
@@ -114,7 +118,7 @@ describe('App e2e', () => {
           .withHeaders({
             Authorization: token_userAt,
           })
-          .expectStatus(200);
+          .expectStatus(HttpStatus.OK);
       });
 
       it('should get current user name', () => {
@@ -124,7 +128,7 @@ describe('App e2e', () => {
           .withHeaders({
             Authorization: token_userAt,
           })
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectBodyContains(userName);
       });
     });
@@ -143,7 +147,7 @@ describe('App e2e', () => {
             Authorization: token_userAt,
           })
           .withBody(dto)
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectBodyContains(dto.firstName)
           .expectBodyContains(dto.email);
       });
@@ -160,7 +164,7 @@ describe('App e2e', () => {
           .spec()
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectBody([]);
       });
     });
@@ -178,7 +182,7 @@ describe('App e2e', () => {
           .post(localRoute)
           .withHeaders({ Authorization: token_userAt })
           .withBody(createDto)
-          .expectStatus(201)
+          .expectStatus(HttpStatus.CREATED)
           .stores(bookmarkId, 'id');
       });
     });
@@ -189,7 +193,7 @@ describe('App e2e', () => {
           .spec()
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectJsonLength(1);
       });
     });
@@ -201,7 +205,7 @@ describe('App e2e', () => {
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
           .withPathParams('id', `$S{${bookmarkId}}`)
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectBodyContains(`$S{${bookmarkId}}`);
       });
     });
@@ -218,7 +222,7 @@ describe('App e2e', () => {
           .withHeaders({ Authorization: token_userAt })
           .withPathParams('id', `$S{${bookmarkId}}`)
           .withBody(editDto)
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectBodyContains(editDto.description);
       });
     });
@@ -238,7 +242,7 @@ describe('App e2e', () => {
           .spec()
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectJsonLength(0);
       });
     });
@@ -249,12 +253,12 @@ describe('App e2e', () => {
     const localRoute = '/category';
 
     describe('Get empty category', () => {
-      it('should get empty bookmark', () => {
+      it('should get empty category', () => {
         return pactum
           .spec()
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectBody([]);
       });
     });
@@ -272,7 +276,7 @@ describe('App e2e', () => {
           .post(localRoute)
           .withHeaders({ Authorization: token_userAt })
           .withBody(createDto)
-          .expectStatus(201)
+          .expectStatus(HttpStatus.CREATED)
           .stores(categoryId, 'id');
       });
     });
@@ -283,7 +287,7 @@ describe('App e2e', () => {
           .spec()
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectJsonLength(1);
       });
     });
@@ -295,7 +299,7 @@ describe('App e2e', () => {
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
           .withPathParams('id', `$S{${categoryId}}`)
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectBodyContains(`$S{${categoryId}}`);
       });
     });
@@ -313,7 +317,7 @@ describe('App e2e', () => {
           .withHeaders({ Authorization: token_userAt })
           .withPathParams('id', `$S{${categoryId}}`)
           .withBody(editDto)
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectBodyContains(editDto.description);
       });
 
@@ -328,7 +332,7 @@ describe('App e2e', () => {
           .withHeaders({ Authorization: token_userAt })
           .withPathParams('id', `$S{${categoryId}}`)
           .withBody(editDto_withoutName)
-          .expectStatus(400);
+          .expectStatus(HttpStatus.BAD_REQUEST);
       });
     });
 
@@ -339,7 +343,7 @@ describe('App e2e', () => {
           .delete(localRoute + '/{id}')
           .withHeaders({ Authorization: token_userAt })
           .withPathParams('id', `$S{${categoryId}}`)
-          .expectStatus(204);
+          .expectStatus(HttpStatus.NO_CONTENT);
       });
 
       it('should get empty category', () => {
@@ -347,7 +351,7 @@ describe('App e2e', () => {
           .spec()
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .expectStatus(200)
+          .expectStatus(HttpStatus.OK)
           .expectJsonLength(0);
       });
     });
