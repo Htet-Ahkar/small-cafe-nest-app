@@ -10,7 +10,7 @@ import { UserService } from './user.service';
 export class UserController {
   constructor(private userService: UserService) {}
 
-  @Get('me')
+  @Get('current')
   getMe(@GetUser() user: User) {
     return user;
   }

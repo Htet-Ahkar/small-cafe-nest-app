@@ -109,10 +109,12 @@ describe('App e2e', () => {
   // user test
   describe('User', () => {
     describe('Get Me', () => {
+      const localRoute = '/users/current';
+
       it('should get current user', () => {
         return pactum
           .spec()
-          .get('/users/me')
+          .get(localRoute)
           .withHeaders({
             Authorization: token_userAt,
           })
@@ -122,7 +124,7 @@ describe('App e2e', () => {
       it('should get current user name', () => {
         return pactum
           .spec()
-          .get('/users/me')
+          .get(localRoute)
           .withHeaders({
             Authorization: token_userAt,
           })
@@ -132,22 +134,44 @@ describe('App e2e', () => {
     });
 
     describe('Edit user', () => {
+      const localRoute = '/users';
+
       const dto: EditUserDto = {
+        email: 'user@gmail.com',
+        userName: 'user',
         firstName: 'fristName',
-        email: 'email@gmail.com',
+        isAavilable: true,
       };
 
       it('should edit user', () => {
         return pactum
           .spec()
-          .patch('/users')
+          .patch(localRoute)
           .withHeaders({
             Authorization: token_userAt,
           })
           .withBody(dto)
           .expectStatus(HttpStatus.OK)
+          .expectBodyContains(dto.email)
+          .expectBodyContains(dto.userName)
           .expectBodyContains(dto.firstName)
-          .expectBodyContains(dto.email);
+          .expectBodyContains(dto.isAavilable);
+      });
+
+      const dto_false = {
+        firstName: 'fristName',
+        lastName: 'lastName',
+      };
+
+      it('should fail edit user', () => {
+        return pactum
+          .spec()
+          .patch(localRoute)
+          .withHeaders({
+            Authorization: token_userAt,
+          })
+          .withBody(dto_false)
+          .expectStatus(HttpStatus.BAD_REQUEST);
       });
     });
   });
