@@ -15,6 +15,12 @@ describe('App e2e', () => {
   const token_userAt = `Bearer $S{${userAt}}`;
   const bookmarkId = 'bookmarkId';
 
+  const userName = 'user';
+  const authDto: AuthDto = {
+    email: `${userName}@email.com`,
+    password: '123',
+  };
+
   // Starting Logic
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -39,11 +45,6 @@ describe('App e2e', () => {
 
   // auth test
   describe('Auth', () => {
-    const authDto: AuthDto = {
-      email: 'user@email.com',
-      password: '123',
-    };
-
     const testCases = [
       {
         name: 'should throw if email empty',
@@ -113,6 +114,17 @@ describe('App e2e', () => {
           })
           .expectStatus(200);
       });
+
+      it('should get current user name', () => {
+        return pactum
+          .spec()
+          .get('/users/me')
+          .withHeaders({
+            Authorization: token_userAt,
+          })
+          .expectStatus(200)
+          .expectBodyContains(userName);
+      });
     });
 
     describe('Edit user', () => {
@@ -136,6 +148,7 @@ describe('App e2e', () => {
     });
   });
 
+  // bookmark test
   describe('Bookmark', () => {
     const localRoute = '/bookmarks';
 

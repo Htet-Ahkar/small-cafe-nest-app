@@ -7,6 +7,7 @@
 // 1st start database: npm run db:dev:up
 // 2nd run migration: npx prisma migrate dev --name init
 // 3rd remove database: npm run db:dev:rm
+// or just run npm run prisma:dev:migrate
 
 generator client {
   provider = "prisma-client-js"
@@ -22,14 +23,19 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // login credentials
   email String @unique
   hash  String
 
-  userName  String  @unique
-  firstName String?
-  lastName  String?
+  // data
+  userName    String?
+  firstName   String?
+  lastName    String?
+  isAavilable Boolean @default(false)
 
-  bookmarks Bookmark[]
+  bookmarks  Bookmark[]
+  categories Category[]
+  products   Product[]
 
   @@map("users")
 }
@@ -39,6 +45,7 @@ model Bookmark {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // data
   title       String
   description String?
   link        String?
@@ -47,4 +54,42 @@ model Bookmark {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("bookmarks")
+}
+
+model Category {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // data
+  name        String  @unique
+  type        String?
+  description String?
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // data
+  name        String
+  type        String?
+  description String?
+  imageLink   String?
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId Int
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("products")
 }
