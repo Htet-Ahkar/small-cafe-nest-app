@@ -6,6 +6,7 @@ import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
 import { EditUserDto } from 'src/user/dto';
 import { CreateBookmarkDto, EditBookmarkDto } from 'src/bookmark/dto';
+import { CreateCategoryDto, EditCategoryDto } from 'src/category/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -14,6 +15,7 @@ describe('App e2e', () => {
   const userAt = 'userAt';
   const token_userAt = `Bearer $S{${userAt}}`;
   const bookmarkId = 'bookmarkId';
+  const categoryId = 'categoryId';
 
   const userName = 'user';
   const authDto: AuthDto = {
@@ -232,6 +234,115 @@ describe('App e2e', () => {
       });
 
       it('should get empty bookmark', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(200)
+          .expectJsonLength(0);
+      });
+    });
+  });
+
+  // category test
+  describe('Category', () => {
+    const localRoute = '/category';
+
+    describe('Get empty category', () => {
+      it('should get empty bookmark', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(200)
+          .expectBody([]);
+      });
+    });
+
+    describe('Create category', () => {
+      const createDto: CreateCategoryDto = {
+        name: 'Category Name',
+        type: 'Category Type',
+        // description: 'Category Description',
+      };
+
+      it('should create category', () => {
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto)
+          .expectStatus(201)
+          .stores(categoryId, 'id');
+      });
+    });
+
+    describe('Get categories', () => {
+      it('should get categories', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(200)
+          .expectJsonLength(1);
+      });
+    });
+
+    describe('Get category by id', () => {
+      it('should get bookmark by id', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${categoryId}}`)
+          .expectStatus(200)
+          .expectBodyContains(`$S{${categoryId}}`);
+      });
+    });
+
+    describe('Edit category', () => {
+      const editDto: EditCategoryDto = {
+        name: 'Edited Name',
+        description: 'Category Description',
+      };
+
+      it('should edit category by id', () => {
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${categoryId}}`)
+          .withBody(editDto)
+          .expectStatus(200)
+          .expectBodyContains(editDto.description);
+      });
+
+      const editDto_withoutName = {
+        description: 'Category Description',
+      };
+
+      it('should fail edit category by id', () => {
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${categoryId}}`)
+          .withBody(editDto_withoutName)
+          .expectStatus(400);
+      });
+    });
+
+    describe('Delete category by id', () => {
+      it('should delete category by id', () => {
+        return pactum
+          .spec()
+          .delete(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${categoryId}}`)
+          .expectStatus(204);
+      });
+
+      it('should get empty category', () => {
         return pactum
           .spec()
           .get(localRoute)
