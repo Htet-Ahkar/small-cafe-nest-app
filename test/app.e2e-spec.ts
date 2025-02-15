@@ -1,10 +1,11 @@
 import { Test } from '@nestjs/testing';
-import { AppModule } from '../src/app.module';
+import { AppModule } from 'src/app.module';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { PrismaService } from '../src/prisma/prisma.service';
 import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
 import { EditUserDto } from 'src/user/dto';
+import { CreateBookmarkDto, EditBookmarkDto } from 'src/bookmark/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -12,15 +13,7 @@ describe('App e2e', () => {
 
   const userAt = 'userAt';
   const token_userAt = `Bearer $S{${userAt}}`;
-
-  // helper function
-  const testEndpoint =
-    (endpoint: string) => async (body: object, expectedStatus: number) =>
-      await pactum
-        .spec()
-        .post(endpoint)
-        .withBody(body)
-        .expectStatus(expectedStatus);
+  const bookmarkId = 'bookmarkId';
 
   // Starting Logic
   beforeAll(async () => {
@@ -65,21 +58,34 @@ describe('App e2e', () => {
       { name: 'should throw if payload empty', body: {}, expectedStatus: 400 },
     ];
 
+    // helper function
+    const testEndpoint =
+      (endpoint: string) => async (body: object, expectedStatus: number) =>
+        await pactum
+          .spec()
+          .post(endpoint)
+          .withBody(body)
+          .expectStatus(expectedStatus);
+
     // test singnup logics
     describe('Signup', () => {
-      const signupTest = testEndpoint('/auth/signup');
+      const localRoute = '/auth/signup';
+
+      const signupTest = testEndpoint(localRoute);
 
       testCases.forEach(({ name, body, expectedStatus }) => {
         it(name, () => signupTest(body, expectedStatus));
       });
 
       it('should signup', () =>
-        pactum.spec().post('/auth/signup').withBody(authDto).expectStatus(201));
+        pactum.spec().post(localRoute).withBody(authDto).expectStatus(201));
     });
 
     // test singnin logics
     describe('Signin', () => {
-      const signinTest = testEndpoint('/auth/signin');
+      const localRoute = '/auth/signin';
+
+      const signinTest = testEndpoint(localRoute);
 
       testCases.forEach(({ name, body, expectedStatus }) => {
         it(name, () => signinTest(body, expectedStatus));
@@ -88,13 +94,14 @@ describe('App e2e', () => {
       it('should signin', () =>
         pactum
           .spec()
-          .post('/auth/signin')
+          .post(localRoute)
           .withBody(authDto)
           .expectStatus(200)
-          .stores(userAt, 'access_token')); // pactum's tocken store logic
+          .stores(userAt, 'access_token')); // pactum's token store logic
     });
   });
 
+  // user test
   describe('User', () => {
     describe('Get Me', () => {
       it('should get current user', () => {
@@ -129,15 +136,96 @@ describe('App e2e', () => {
     });
   });
 
-  describe('Bookmarks', () => {
-    describe('Create bookmark', () => {});
+  describe('Bookmark', () => {
+    const localRoute = '/bookmarks';
 
-    describe('Get bookmarks', () => {});
+    describe('Get empty bookmark', () => {
+      it('should get empty bookmark', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(200)
+          .expectBody([]);
+      });
+    });
 
-    describe('Get bookmark by id', () => {});
+    describe('Create bookmark', () => {
+      const createDto: CreateBookmarkDto = {
+        title: 'bookmarkTitle',
+        link: 'bookmarkLink',
+        // description: 'bookmarkDescription',
+      };
 
-    describe('Edit bookmark by id', () => {});
+      it('should create bookmark', () => {
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto)
+          .expectStatus(201)
+          .stores(bookmarkId, 'id');
+      });
+    });
 
-    describe('Delete bookmark by id', () => {});
+    describe('Get bookmarks', () => {
+      it('should get bookmarks', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(200)
+          .expectJsonLength(1);
+      });
+    });
+
+    describe('Get bookmark by id', () => {
+      it('should get bookmark by id', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${bookmarkId}}`)
+          .expectStatus(200)
+          .expectBodyContains(`$S{${bookmarkId}}`);
+      });
+    });
+
+    describe('Edit bookmark', () => {
+      const editDto: EditBookmarkDto = {
+        description: 'description',
+      };
+
+      it('should edit bookmark by id', () => {
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${bookmarkId}}`)
+          .withBody(editDto)
+          .expectStatus(200)
+          .expectBodyContains(editDto.description);
+      });
+    });
+
+    describe('Delete bookmark by id', () => {
+      it('should delete bookmark by id', () => {
+        return pactum
+          .spec()
+          .delete(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${bookmarkId}}`)
+          .expectStatus(204);
+      });
+
+      it('should get empty bookmark', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(200)
+          .expectJsonLength(0);
+      });
+    });
   });
 });
