@@ -5,7 +5,6 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
 import { EditUserDto } from 'src/user/dto';
-import { CreateBookmarkDto, EditBookmarkDto } from 'src/bookmark/dto';
 import { CreateCategoryDto, EditCategoryDto } from 'src/category/dto';
 
 describe('App e2e', () => {
@@ -14,7 +13,6 @@ describe('App e2e', () => {
 
   const userAt = 'userAt';
   const token_userAt = `Bearer $S{${userAt}}`;
-  const bookmarkId = 'bookmarkId';
   const categoryId = 'categoryId';
 
   const userName = 'user';
@@ -150,100 +148,6 @@ describe('App e2e', () => {
           .expectStatus(HttpStatus.OK)
           .expectBodyContains(dto.firstName)
           .expectBodyContains(dto.email);
-      });
-    });
-  });
-
-  // bookmark test
-  describe('Bookmark', () => {
-    const localRoute = '/bookmarks';
-
-    describe('Get empty bookmark', () => {
-      it('should get empty bookmark', () => {
-        return pactum
-          .spec()
-          .get(localRoute)
-          .withHeaders({ Authorization: token_userAt })
-          .expectStatus(HttpStatus.OK)
-          .expectBody([]);
-      });
-    });
-
-    describe('Create bookmark', () => {
-      const createDto: CreateBookmarkDto = {
-        title: 'bookmarkTitle',
-        link: 'bookmarkLink',
-        // description: 'bookmarkDescription',
-      };
-
-      it('should create bookmark', () => {
-        return pactum
-          .spec()
-          .post(localRoute)
-          .withHeaders({ Authorization: token_userAt })
-          .withBody(createDto)
-          .expectStatus(HttpStatus.CREATED)
-          .stores(bookmarkId, 'id');
-      });
-    });
-
-    describe('Get bookmarks', () => {
-      it('should get bookmarks', () => {
-        return pactum
-          .spec()
-          .get(localRoute)
-          .withHeaders({ Authorization: token_userAt })
-          .expectStatus(HttpStatus.OK)
-          .expectJsonLength(1);
-      });
-    });
-
-    describe('Get bookmark by id', () => {
-      it('should get bookmark by id', () => {
-        return pactum
-          .spec()
-          .get(localRoute)
-          .withHeaders({ Authorization: token_userAt })
-          .withPathParams('id', `$S{${bookmarkId}}`)
-          .expectStatus(HttpStatus.OK)
-          .expectBodyContains(`$S{${bookmarkId}}`);
-      });
-    });
-
-    describe('Edit bookmark', () => {
-      const editDto: EditBookmarkDto = {
-        description: 'description',
-      };
-
-      it('should edit bookmark by id', () => {
-        return pactum
-          .spec()
-          .patch(localRoute + '/{id}')
-          .withHeaders({ Authorization: token_userAt })
-          .withPathParams('id', `$S{${bookmarkId}}`)
-          .withBody(editDto)
-          .expectStatus(HttpStatus.OK)
-          .expectBodyContains(editDto.description);
-      });
-    });
-
-    describe('Delete bookmark by id', () => {
-      it('should delete bookmark by id', () => {
-        return pactum
-          .spec()
-          .delete(localRoute + '/{id}')
-          .withHeaders({ Authorization: token_userAt })
-          .withPathParams('id', `$S{${bookmarkId}}`)
-          .expectStatus(204);
-      });
-
-      it('should get empty bookmark', () => {
-        return pactum
-          .spec()
-          .get(localRoute)
-          .withHeaders({ Authorization: token_userAt })
-          .expectStatus(HttpStatus.OK)
-          .expectJsonLength(0);
       });
     });
   });

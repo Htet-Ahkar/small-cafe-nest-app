@@ -33,27 +33,10 @@ model User {
   lastName    String?
   isAavilable Boolean @default(false)
 
-  bookmarks  Bookmark[]
   categories Category[]
   products   Product[]
 
   @@map("users")
-}
-
-model Bookmark {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // data
-  title       String
-  description String?
-  link        String?
-
-  userId Int
-  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("bookmarks")
 }
 
 model Category {
