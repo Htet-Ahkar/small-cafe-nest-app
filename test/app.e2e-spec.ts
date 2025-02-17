@@ -6,6 +6,8 @@ import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
 import { EditUserDto } from 'src/user/dto';
 import { CreateCategoryDto, EditCategoryDto } from 'src/category/dto';
+import { CreateProductDto, EditProductDto } from 'src/product/dto';
+import { BundleItem, ProductType, UnitType } from '@prisma/client';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -14,6 +16,7 @@ describe('App e2e', () => {
   const userAt = 'userAt';
   const token_userAt = `Bearer $S{${userAt}}`;
   const categoryId = 'categoryId';
+  const productId = 'productId';
 
   const userName = 'user';
   const authDto: AuthDto = {
@@ -283,5 +286,192 @@ describe('App e2e', () => {
           .expectJsonLength(0);
       });
     });
+  });
+
+  // product test
+  describe('Product', () => {
+    const localRoute = '/product';
+
+    describe('Get empty product', () => {
+      it('should get empty product', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectBody([]);
+      });
+    });
+
+    // TODO
+    describe('Create product', () => {
+      const createDto_coffee: CreateProductDto = {
+        name: 'Coffee',
+        unit: UnitType.CUP,
+        price: 5,
+        trackStock: false,
+        stock: 20,
+        bundleItems: [],
+        type: ProductType.BUNDLE_ITEM,
+      };
+
+      const createDto_breakfast: CreateProductDto = {
+        name: 'Breakfast Set',
+        unit: UnitType.SET,
+        price: 15,
+        trackStock: false,
+        stock: 20,
+        bundleItems: [
+          {
+            productId: 1, // This is coffee id
+            quantity: 1,
+          },
+        ],
+        type: ProductType.BUNDLE,
+      };
+
+      const createDto_false: CreateProductDto = {
+        name: 'Breakfast Set',
+        unit: UnitType.SET,
+        price: 15,
+        trackStock: false,
+        stock: 20,
+        bundleItems: [], // This shouldn't be empty
+        type: ProductType.BUNDLE,
+      };
+
+      const createDto_breakfast_false: CreateProductDto = {
+        name: 'Breakfast Set 2',
+        unit: UnitType.SET,
+        price: 15,
+        trackStock: false,
+        stock: 20,
+        bundleItems: [
+          {
+            productId: 2, // This is breakfast set id
+            quantity: 1,
+          },
+        ],
+        type: ProductType.BUNDLE,
+      };
+
+      it('should create coffee', () => {
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto_coffee)
+          .expectStatus(HttpStatus.CREATED);
+      });
+
+      it('should not create product ', () => {
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto_false)
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+
+      it('should create breakfast set', () => {
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto_breakfast)
+          .stores(productId, 'id')
+          .expectStatus(HttpStatus.CREATED);
+      });
+
+      it('should not create product set', () => {
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto_breakfast_false)
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+    });
+
+    describe('Get products', () => {
+      it('should get products', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLength(1);
+      });
+    });
+
+    describe('Get product by id', () => {
+      it('should get bookmark by id', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${productId}}`)
+          .expectStatus(HttpStatus.OK)
+          .expectBodyContains(`$S{${productId}}`);
+      });
+    });
+
+    // describe('Edit product', () => {
+    //   const editDto: EditProductDto = {
+    //     name: 'Pizza',
+    //     unit: UnitType.SLICE,
+    //     price: 12.34,
+    //     trackStock: false,
+    //     stock: 30,
+    //     bundleItems: [],
+    //     type: ProductType.STANDALONE,
+    //     description: 'product description',
+    //   };
+
+    //   it('should edit product by id', () => {
+    //     return pactum
+    //       .spec()
+    //       .patch(localRoute + '/{id}')
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .withPathParams('id', `$S{${productId}}`)
+    //       .withBody(editDto)
+    //       .expectStatus(HttpStatus.OK)
+    //       .expectBodyContains(editDto.description);
+    //   });
+
+    //   const editDto_withoutName = {
+    //     description: 'Product Description',
+    //   };
+
+    //   it('should fail edit product by id', () => {
+    //     return pactum
+    //       .spec()
+    //       .patch(localRoute + '/{id}')
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .withPathParams('id', `$S{${productId}}`)
+    //       .withBody(editDto_withoutName)
+    //       .expectStatus(HttpStatus.BAD_REQUEST);
+    //   });
+    // });
+
+    // describe('Delete product by id', () => {
+    //   it('should delete product by id', () => {
+    //     return pactum
+    //       .spec()
+    //       .delete(localRoute + '/{id}')
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .withPathParams('id', `$S{${productId}}`)
+    //       .expectStatus(HttpStatus.NO_CONTENT);
+    //   });
+
+    //   it('should get empty product', () => {
+    //     return pactum
+    //       .spec()
+    //       .get(localRoute)
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .expectStatus(HttpStatus.OK)
+    //       .expectJsonLength(0);
+    //   });
+    // });
   });
 });

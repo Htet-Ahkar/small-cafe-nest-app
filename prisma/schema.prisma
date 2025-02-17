@@ -7,7 +7,7 @@
 // 1st start database: npm run db:dev:up
 // 2nd run migration: npx prisma migrate dev --name init
 // 3rd remove database: npm run db:dev:rm
-// or just run npm run prisma:dev:migrate
+// or just run: npm run prisma:dev:migrate
 
 generator client {
   provider = "prisma-client-js"
@@ -64,7 +64,12 @@ model Product {
 
   // data
   name        String
-  type        String?
+  unit        UnitType     @default(PIECE)
+  price       Float        @default(0.00)
+  trackStock  Boolean      @default(false)
+  stock       Int          @default(0)
+  bundleItems BundleItem[]
+  type        ProductType  @default(STANDALONE)
   description String?
   imageLink   String?
 
@@ -75,4 +80,26 @@ model Product {
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("products")
+}
+
+model BundleItem {
+  productId Int @id
+  quantity  Int @default(1)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+enum ProductType {
+  BUNDLE
+  BUNDLE_ITEM
+  STANDALONE
+}
+
+enum UnitType {
+  PIECE
+  PACK
+  BOX
+  SET
+  CUP
+  SLICE
 }
