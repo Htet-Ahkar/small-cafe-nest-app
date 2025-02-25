@@ -7,7 +7,7 @@ import { AuthDto } from 'src/auth/dto';
 import { EditUserDto } from 'src/user/dto';
 import { CreateCategoryDto, EditCategoryDto } from 'src/category/dto';
 import { CreateProductDto, EditProductDto } from 'src/product/dto';
-import { BundleItem, ProductType, UnitType } from '@prisma/client';
+import { ProductType, UnitType } from '@prisma/client';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -15,8 +15,6 @@ describe('App e2e', () => {
 
   const userAt = 'userAt';
   const token_userAt = `Bearer $S{${userAt}}`;
-  const categoryId = 'categoryId';
-  const productId = 'productId';
 
   const userName = 'user';
   const authDto: AuthDto = {
@@ -183,6 +181,8 @@ describe('App e2e', () => {
   describe('Category', () => {
     const localRoute = '/category';
 
+    const categoryId = 'categoryId';
+
     describe('Get empty category', () => {
       it('should get empty category', () => {
         return pactum
@@ -292,6 +292,12 @@ describe('App e2e', () => {
   describe('Product', () => {
     const localRoute = '/product';
 
+    const categoryId_drink = 'categoryId_drink';
+    const categoryId_breakfast = 'categoryId_breakfast';
+
+    const productId_coffee = 'productId_coffee';
+    const productId_breakfastSet = 'productId_breakfastSet';
+
     describe('Get empty product', () => {
       it('should get empty product', () => {
         return pactum
@@ -303,93 +309,123 @@ describe('App e2e', () => {
       });
     });
 
-    // TODO
     describe('Create product', () => {
-      const createDto_coffee: CreateProductDto = {
-        name: 'Coffee',
-        unit: UnitType.CUP,
-        price: 5,
-        trackStock: false,
-        stock: 20,
-        bundleItems: [],
-        type: ProductType.BUNDLE_ITEM,
-      };
+      describe('Create two category for product', () => {
+        const localRoute = '/category';
 
-      const createDto_breakfast: CreateProductDto = {
-        name: 'Breakfast Set',
-        unit: UnitType.SET,
-        price: 15,
-        trackStock: false,
-        stock: 20,
-        bundleItems: [
-          {
-            productId: 1, // This is coffee id
-            quantity: 1,
-          },
-        ],
-        type: ProductType.BUNDLE,
-      };
+        it('should create category drink', () => {
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody({
+              name: 'Drink',
+              type: 'drink',
+            })
+            .expectStatus(HttpStatus.CREATED)
+            .stores(categoryId_drink, 'id');
+        });
 
-      const createDto_false: CreateProductDto = {
-        name: 'Breakfast Set',
-        unit: UnitType.SET,
-        price: 15,
-        trackStock: false,
-        stock: 20,
-        bundleItems: [], // This shouldn't be empty
-        type: ProductType.BUNDLE,
-      };
+        it('should create category set', () => {
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody({
+              name: 'breakfast',
+              type: 'set',
+            })
+            .expectStatus(HttpStatus.CREATED)
+            .stores(categoryId_breakfast, 'id');
+        });
+      });
 
-      const createDto_breakfast_false: CreateProductDto = {
-        name: 'Breakfast Set 2',
-        unit: UnitType.SET,
-        price: 15,
-        trackStock: false,
-        stock: 20,
-        bundleItems: [
-          {
-            productId: 2, // This is breakfast set id
-            quantity: 1,
-          },
-        ],
-        type: ProductType.BUNDLE,
-      };
+      it('should fail create coffee ', () => {
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            categoryId: `$S{${categoryId_drink}}`,
+            name: 'Coffee',
+            unit: UnitType.CUP,
+            price: 5,
+            trackStock: false,
+            stock: 20,
+            bundleItems: '[]', // If type is bundle, this should not be empty.
+            type: ProductType.BUNDLE, // This should not be bundle.
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
 
       it('should create coffee', () => {
         return pactum
           .spec()
           .post(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .withBody(createDto_coffee)
+          .withBody({
+            categoryId: `$S{${categoryId_drink}}`,
+            name: 'Coffee',
+            unit: UnitType.CUP,
+            price: 5,
+            trackStock: false,
+            stock: 20,
+            bundleItems: '[]',
+            type: ProductType.BUNDLE_ITEM,
+          })
+          .stores(productId_coffee, 'id')
           .expectStatus(HttpStatus.CREATED);
       });
 
-      it('should not create product ', () => {
+      it('should fail create breakfast set', () => {
+        const bundleItems = [
+          {
+            productId: Number(pactum.stash.getDataStore(productId_coffee)),
+            quantity: 1,
+          },
+        ];
+
         return pactum
           .spec()
           .post(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .withBody(createDto_false)
+          .withBody({
+            categoryId: `$S{${categoryId_breakfast}}`,
+            name: 'Breakfast set',
+            unit: UnitType.SET,
+            price: 5,
+            trackStock: false,
+            stock: 20,
+            bundleItems: JSON.stringify(bundleItems),
+            type: ProductType.STANDALONE,
+          })
           .expectStatus(HttpStatus.BAD_REQUEST);
       });
 
       it('should create breakfast set', () => {
-        return pactum
-          .spec()
-          .post(localRoute)
-          .withHeaders({ Authorization: token_userAt })
-          .withBody(createDto_breakfast)
-          .stores(productId, 'id')
-          .expectStatus(HttpStatus.CREATED);
-      });
+        const bundleItems = [
+          {
+            productId: Number(pactum.stash.getDataStore(productId_coffee)),
+            quantity: 1,
+          },
+        ];
 
-      it('should not create product set', () => {
         return pactum
           .spec()
           .post(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .withBody(createDto_breakfast_false)
-          .expectStatus(HttpStatus.BAD_REQUEST);
+          .withBody({
+            categoryId: `$S{${categoryId_breakfast}}`,
+            name: 'Breakfast set',
+            unit: UnitType.SET,
+            price: 5,
+            trackStock: false,
+            stock: 20,
+            bundleItems: JSON.stringify(bundleItems),
+            type: ProductType.BUNDLE,
+          })
+          .stores(productId_breakfastSet, 'id')
+          .expectStatus(HttpStatus.CREATED);
       });
     });
 
@@ -400,78 +436,105 @@ describe('App e2e', () => {
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
           .expectStatus(HttpStatus.OK)
-          .expectJsonLength(1);
+          .expectJsonLength(2);
       });
     });
 
     describe('Get product by id', () => {
-      it('should get bookmark by id', () => {
+      it('should get product by id', () => {
         return pactum
           .spec()
           .get(localRoute)
           .withHeaders({ Authorization: token_userAt })
-          .withPathParams('id', `$S{${productId}}`)
+          .withPathParams('id', `$S{${productId_breakfastSet}}`)
           .expectStatus(HttpStatus.OK)
-          .expectBodyContains(`$S{${productId}}`);
+          .expectBodyContains(`$S{${productId_breakfastSet}}`);
       });
     });
 
-    // describe('Edit product', () => {
-    //   const editDto: EditProductDto = {
-    //     name: 'Pizza',
-    //     unit: UnitType.SLICE,
-    //     price: 12.34,
-    //     trackStock: false,
-    //     stock: 30,
-    //     bundleItems: [],
-    //     type: ProductType.STANDALONE,
-    //     description: 'product description',
-    //   };
+    describe('Edit product', () => {
+      it('should edit product by id', () => {
+        const bundleItems = [
+          {
+            productId: Number(pactum.stash.getDataStore(productId_coffee)),
+            quantity: 10,
+          },
+        ];
 
-    //   it('should edit product by id', () => {
-    //     return pactum
-    //       .spec()
-    //       .patch(localRoute + '/{id}')
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .withPathParams('id', `$S{${productId}}`)
-    //       .withBody(editDto)
-    //       .expectStatus(HttpStatus.OK)
-    //       .expectBodyContains(editDto.description);
-    //   });
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${productId_breakfastSet}}`)
+          .withBody({
+            categoryId: `$S{${categoryId_breakfast}}`,
+            name: 'Breakfast set edit',
+            unit: UnitType.SET,
+            price: 10,
+            trackStock: false,
+            stock: 20,
+            bundleItems: JSON.stringify(bundleItems),
+            type: ProductType.BUNDLE,
+          })
+          .expectStatus(HttpStatus.OK)
+          .expectBodyContains('Breakfast set edit')
+          .inspect();
+      });
 
-    //   const editDto_withoutName = {
-    //     description: 'Product Description',
-    //   };
+      it('should fail edit product by id', () => {
+        const bundleItems = [
+          {
+            productId: Number(pactum.stash.getDataStore(productId_coffee)),
+            quantity: '10', // Should be number
+          },
+        ];
 
-    //   it('should fail edit product by id', () => {
-    //     return pactum
-    //       .spec()
-    //       .patch(localRoute + '/{id}')
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .withPathParams('id', `$S{${productId}}`)
-    //       .withBody(editDto_withoutName)
-    //       .expectStatus(HttpStatus.BAD_REQUEST);
-    //   });
-    // });
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${productId_breakfastSet}}`)
+          .withBody({
+            categoryId: `$S{${categoryId_breakfast}}`,
+            name: 'Breakfast set edit',
+            unit: UnitType.SET,
+            price: 10,
+            trackStock: false,
+            stock: 20,
+            bundleItems: JSON.stringify(bundleItems),
+            type: ProductType.BUNDLE,
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+    });
 
-    // describe('Delete product by id', () => {
-    //   it('should delete product by id', () => {
-    //     return pactum
-    //       .spec()
-    //       .delete(localRoute + '/{id}')
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .withPathParams('id', `$S{${productId}}`)
-    //       .expectStatus(HttpStatus.NO_CONTENT);
-    //   });
+    describe('Delete product by id', () => {
+      it('should delete coffee by id', () => {
+        return pactum
+          .spec()
+          .delete(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${productId_coffee}}`)
+          .expectStatus(HttpStatus.NO_CONTENT);
+      });
 
-    //   it('should get empty product', () => {
-    //     return pactum
-    //       .spec()
-    //       .get(localRoute)
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .expectStatus(HttpStatus.OK)
-    //       .expectJsonLength(0);
-    //   });
-    // });
+      it('should delete breakfast set by id', () => {
+        return pactum
+          .spec()
+          .delete(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${productId_breakfastSet}}`)
+          .expectStatus(HttpStatus.NO_CONTENT);
+      });
+
+      it('should get empty product', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLength(0);
+      });
+    });
   });
 });

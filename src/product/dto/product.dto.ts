@@ -1,4 +1,4 @@
-import { BundleItem, ProductType, UnitType } from '@prisma/client';
+import { ProductType, UnitType } from '@prisma/client';
 import {
   IsArray,
   IsBoolean,
@@ -11,6 +11,10 @@ import {
 } from 'class-validator';
 
 export class CreateProductDto {
+  @IsNumber()
+  @IsNotEmpty()
+  categoryId: number;
+
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -33,9 +37,9 @@ export class CreateProductDto {
   @IsNotEmpty()
   stock: number;
 
-  @IsArray()
+  @IsString()
   @IsNotEmpty()
-  bundleItems: BundleItem[] | [];
+  bundleItems: string;
 
   @IsEnum(ProductType)
   @IsNotEmpty()
@@ -51,6 +55,10 @@ export class CreateProductDto {
 }
 
 export class EditProductDto {
+  @IsNumber()
+  @IsNotEmpty()
+  categoryId: number;
+
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -73,9 +81,9 @@ export class EditProductDto {
   @IsNotEmpty()
   stock: number;
 
-  @IsArray()
+  @IsString()
   @IsNotEmpty()
-  bundleItems: BundleItem[] | [];
+  bundleItems: string;
 
   @IsEnum(ProductType)
   @IsNotEmpty()
@@ -88,4 +96,14 @@ export class EditProductDto {
   @IsString()
   @IsOptional()
   imageLink?: string;
+}
+
+export class BundleItemDto {
+  @IsNumber()
+  @IsNotEmpty()
+  productId: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  quantity: number;
 }
