@@ -1,83 +1,70 @@
 import {
-  ArgumentMetadata,
   Injectable,
   PipeTransform,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { ProductType } from '@prisma/client';
 import { plainToInstance } from 'class-transformer';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { BundleItemDto } from '../dto';
+import { BundleItemDto, CreateProductDto, EditProductDto } from '../dto';
 import { validateSync } from 'class-validator';
 
 @Injectable()
 export class ProductTypeValidPipe implements PipeTransform {
   constructor(private prismaService: PrismaService) {}
 
-  async transform(value: any, metadata: ArgumentMetadata) {
-    const productType: ProductType = value.type;
-    const bundleItemsStr = value.bundleItems;
+  async transform(value: CreateProductDto | EditProductDto) {
+    const { type: productType, bundleItems: bundleItemsStr } = value;
 
-    const safeJsonParse = (jsonString, defaultValue = []) => {
+    const parseJson = (jsonString: string) => {
       try {
-        return JSON.parse(jsonString);
+        const parsed = JSON.parse(jsonString);
+        if (!Array.isArray(parsed)) {
+          throw new BadRequestException('Expected an array of bundle items.');
+        }
+        return parsed;
       } catch {
         throw new BadRequestException('Invalid JSON format.');
       }
     };
 
-    const bundleItems = safeJsonParse(bundleItemsStr);
-
-    // check type
-    if (!Array.isArray(bundleItems)) {
-      throw new BadRequestException('Expected an array of bundle items.');
-    }
-
-    const validatedBundleItems: BundleItemDto[] = await Promise.all(
-      bundleItems.map(async (item, index) => {
-        const object = plainToInstance(BundleItemDto, item);
-        const errors = validateSync(object);
-
-        if (errors.length > 0) {
-          throw new BadRequestException(
-            `Invalid bundle item at index ${index}.`,
-          );
-        }
-
-        const { productId, quantity } = object;
-        if (quantity < 1) {
-          throw new BadRequestException(
-            `Quantity should be at least 1. Invalid bundle item at index ${index}.`,
-          );
-        }
-
-        const product = await this.prismaService.product.findUnique({
-          where: { id: productId },
-        });
-
-        if (!product) {
-          throw new NotFoundException(
-            `Product not found. Invalid bundle item at index ${index}.`,
-          );
-        }
-
-        return object;
-      }),
-    );
-
-    if (productType === 'BUNDLE') {
-      if (validatedBundleItems.length === 0) {
-        throw new BadRequestException('bundleItems cannot be empty in Bundle.');
+    const validateBundleItem = async (item: any, index: number) => {
+      const object = plainToInstance(BundleItemDto, item);
+      const errors = validateSync(object);
+      if (errors.length) {
+        throw new BadRequestException(`Invalid bundle item at index ${index}.`);
       }
-    }
 
-    if (productType !== 'BUNDLE') {
-      if (validatedBundleItems.length > 0) {
+      const { productId, quantity } = object;
+      if (quantity < 1) {
         throw new BadRequestException(
-          'bundleItems is empty in BundleItem and Standalone type.',
+          `Quantity should be at least 1. Invalid bundle item at index ${index}.`,
         );
       }
+
+      const product = await this.prismaService.product.findUnique({
+        where: { id: productId },
+      });
+      if (!product) {
+        throw new NotFoundException(`Product not found at index ${index}.`);
+      }
+
+      return object;
+    };
+
+    const bundleItems = parseJson(bundleItemsStr);
+    const validatedBundleItems = await Promise.all(
+      bundleItems.map(validateBundleItem),
+    );
+
+    const isBundle = productType === 'BUNDLE';
+    if (isBundle && !validatedBundleItems.length) {
+      throw new BadRequestException('bundleItems cannot be empty in Bundle.');
+    }
+    if (!isBundle && validatedBundleItems.length) {
+      throw new BadRequestException(
+        'bundleItems must be empty for non-BUNDLE types.',
+      );
     }
 
     return value;
