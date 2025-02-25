@@ -6,7 +6,6 @@ import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
 import { EditUserDto } from 'src/user/dto';
 import { CreateCategoryDto, EditCategoryDto } from 'src/category/dto';
-import { CreateProductDto, EditProductDto } from 'src/product/dto';
 import { ProductType, UnitType } from '@prisma/client';
 
 describe('App e2e', () => {
@@ -477,8 +476,7 @@ describe('App e2e', () => {
             type: ProductType.BUNDLE,
           })
           .expectStatus(HttpStatus.OK)
-          .expectBodyContains('Breakfast set edit')
-          .inspect();
+          .expectBodyContains('Breakfast set edit');
       });
 
       it('should fail edit product by id', () => {
