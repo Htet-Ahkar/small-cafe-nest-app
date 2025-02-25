@@ -1,3 +1,4 @@
+import { ApiProperty } from '@nestjs/swagger';
 import { ProductType, UnitType } from '@prisma/client';
 import {
   IsArray,
@@ -19,6 +20,7 @@ export class CreateProductDto {
   @IsNotEmpty()
   name: string;
 
+  @ApiProperty({ enum: UnitType, enumName: 'UnitType' })
   @IsEnum(UnitType)
   @IsNotEmpty()
   unit: UnitType;
@@ -30,17 +32,23 @@ export class CreateProductDto {
 
   @IsBoolean()
   @IsNotEmpty()
-  trackStock: boolean;
+  trackStock: boolean = false;
 
   @IsNumber()
   @Min(0)
   @IsNotEmpty()
   stock: number;
 
+  @ApiProperty({
+    example: '[{"productId":1,"quantity":2}]',
+    description:
+      'JSON string representing an array of bundle items. If type is BUNDLE, this should not be empty. Vice versa.',
+  })
   @IsString()
   @IsNotEmpty()
-  bundleItems: string;
+  bundleItems: string = '[]';
 
+  @ApiProperty({ enum: ProductType, enumName: 'ProductType' })
   @IsEnum(ProductType)
   @IsNotEmpty()
   type: ProductType;
@@ -63,6 +71,7 @@ export class EditProductDto {
   @IsNotEmpty()
   name: string;
 
+  @ApiProperty({ enum: UnitType, enumName: 'UnitType' })
   @IsEnum(UnitType)
   @IsNotEmpty()
   unit: UnitType;
@@ -74,17 +83,23 @@ export class EditProductDto {
 
   @IsBoolean()
   @IsNotEmpty()
-  trackStock: boolean;
+  trackStock: boolean = false;
 
   @IsNumber()
   @Min(0)
   @IsNotEmpty()
   stock: number;
 
+  @ApiProperty({
+    example: '[{"productId":1,"quantity":2}]',
+    description:
+      'JSON string representing an array of bundle items. If type is BUNDLE, this should not be empty. Vice versa.',
+  })
   @IsString()
   @IsNotEmpty()
-  bundleItems: string;
+  bundleItems: string = '[]';
 
+  @ApiProperty({ enum: ProductType, enumName: 'ProductType' })
   @IsEnum(ProductType)
   @IsNotEmpty()
   type: ProductType;

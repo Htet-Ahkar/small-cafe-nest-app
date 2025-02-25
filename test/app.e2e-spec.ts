@@ -16,10 +16,6 @@ describe('App e2e', () => {
   const token_userAt = `Bearer $S{${userAt}}`;
 
   const userName = 'user';
-  const authDto: AuthDto = {
-    email: `${userName}@email.com`,
-    password: '123',
-  };
 
   // Starting Logic
   beforeAll(async () => {
@@ -45,18 +41,27 @@ describe('App e2e', () => {
 
   // auth test
   describe('Auth', () => {
+    const authDto: AuthDto = {
+      email: `${userName}@email.com`,
+      password: '123',
+    };
+
     const testCases = [
       {
         name: 'should throw if email empty',
         body: { password: authDto.password },
-        expectedStatus: 400,
+        expectedStatus: HttpStatus.BAD_REQUEST,
       },
       {
         name: 'should throw if password empty',
         body: { email: authDto.email },
-        expectedStatus: 400,
+        expectedStatus: HttpStatus.BAD_REQUEST,
       },
-      { name: 'should throw if payload empty', body: {}, expectedStatus: 400 },
+      {
+        name: 'should throw if payload empty',
+        body: {},
+        expectedStatus: HttpStatus.BAD_REQUEST,
+      },
     ];
 
     // helper function
