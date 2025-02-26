@@ -15,13 +15,16 @@ async function bootstrap() {
     .setTitle(packageJson.name)
     .setDescription(packageJson.description)
     .setVersion(packageJson.version)
-    // .addTag('cats')
+    .addBearerAuth()
     .build();
 
   const documentFactory = () => SwaggerModule.createDocument(app, config);
   const options: SwaggerCustomOptions = {
     jsonDocumentUrl: 'swagger/json',
     yamlDocumentUrl: 'swagger/yaml',
+    swaggerOptions: {
+      supportedSubmitMethods: [], // Disables Try it out
+    },
   };
 
   SwaggerModule.setup('swagger', app, documentFactory, options);

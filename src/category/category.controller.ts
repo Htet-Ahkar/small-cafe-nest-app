@@ -15,6 +15,7 @@ import { JwtGuard } from 'src/auth/guard';
 import { CategoryService } from './category.service';
 import { GetUser } from 'src/auth/decorator';
 import { CreateCategoryDto, EditCategoryDto } from './dto';
+
 @UseGuards(JwtGuard)
 @Controller('category')
 export class CategoryController {
