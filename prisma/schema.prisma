@@ -77,7 +77,8 @@ model Product {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   categoryId Int
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category   Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  OrderItem  OrderItem[]
 
   @@map("products")
 }
@@ -95,4 +96,75 @@ enum UnitType {
   SET
   CUP
   SLICE
+}
+
+model Table {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tableName   String      @unique
+  status      TableStatus @default(AVAILABLE)
+  description String?
+
+  orders Order[]
+
+  @@map("tables")
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+}
+
+model Order {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  status        OrderStatus   @default(PENDING)
+  paymentMethod PaymentMethod @default(CASH)
+  subtotal      Float // Before taxes and discounts
+  // discount      Float? // Discount amount 
+  // tax           Float? // Tax amount
+  totalPrice    Float // Final price after tax and discount
+  description   String?
+  completedAt   DateTime?
+
+  tableId Int
+  table   Table @relation(fields: [tableId], references: [id])
+
+  OrderItems OrderItem[]
+
+  @@map("orders")
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  MOBILE_PAYMENT
+}
+
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELED
+}
+
+model OrderItem {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quantity Int
+  price    Float
+
+  orderId Int
+  order   Order @relation(fields: [orderId], references: [id])
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@map("orderItems")
 }
