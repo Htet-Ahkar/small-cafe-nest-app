@@ -5,8 +5,9 @@ import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
 import { EditUserDto } from 'src/user/dto';
 import { CreateCategoryDto, EditCategoryDto } from 'src/category/dto';
-import { ProductType, UnitType } from '@prisma/client';
+import { ProductType, TableStatus, UnitType } from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateTableDto, EditTableDto } from 'src/table/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -21,6 +22,7 @@ describe('App e2e', () => {
   enum Model {
     CATEGORY = 'CATEGORY',
     PRODUCT = 'PRODUCT',
+    TABLE = 'TABLE',
   }
 
   const cleanUp = (models: Model[]) => {
@@ -32,6 +34,10 @@ describe('App e2e', () => {
 
         case Model.PRODUCT:
           await prismaService.product.deleteMany();
+          break;
+
+        case Model.TABLE:
+          await prismaService.table.deleteMany();
           break;
 
         default:
@@ -251,7 +257,7 @@ describe('App e2e', () => {
     });
 
     describe('Get category by id', () => {
-      it('should get bookmark by id', () => {
+      it('should get category by id', () => {
         return pactum
           .spec()
           .get(localRoute)
@@ -568,6 +574,120 @@ describe('App e2e', () => {
 
     afterAll(async () => {
       cleanUp([Model.CATEGORY, Model.PRODUCT]);
+    });
+  });
+
+  // table test
+  describe('Table', () => {
+    const localRoute = '/table';
+    const tableId = 'tableId';
+
+    describe('Get empty table', () => {
+      it('should get empty table', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectBody([]);
+      });
+    });
+
+    describe('Create table', () => {
+      const createDto: CreateTableDto = {
+        name: 'Table Name',
+        status: TableStatus.AVAILABLE,
+        // description: 'Table Description',
+      };
+
+      it('should create table', () => {
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto)
+          .expectStatus(HttpStatus.CREATED)
+          .stores(tableId, 'id');
+      });
+    });
+
+    describe('Get tables', () => {
+      it('should get tables', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLength(1);
+      });
+    });
+
+    describe('Get table by id', () => {
+      it('should get table by id', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${tableId}}`)
+          .expectStatus(HttpStatus.OK)
+          .expectBodyContains(`$S{${tableId}}`);
+      });
+    });
+
+    describe('Edit table', () => {
+      const editDto: EditTableDto = {
+        name: 'Edited Name',
+        status: TableStatus.OCCUPIED,
+        description: 'Table Description',
+      };
+
+      it('should edit table by id', () => {
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${tableId}}`)
+          .withBody(editDto)
+          .expectStatus(HttpStatus.OK)
+          .expectBodyContains(editDto.description);
+      });
+
+      it('should fail edit table by id', () => {
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${tableId}}`)
+          .withBody({
+            ...editDto,
+            name: '',
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+    });
+
+    describe('Delete table by id', () => {
+      it('should delete table by id', () => {
+        return pactum
+          .spec()
+          .delete(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${tableId}}`)
+          .expectStatus(HttpStatus.NO_CONTENT);
+      });
+
+      it('should get empty table', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLength(0);
+      });
+    });
+
+    afterAll(async () => {
+      cleanUp([Model.TABLE]);
     });
   });
 });
