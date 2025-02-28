@@ -5,7 +5,7 @@ import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 export class CreateTableDto {
   @IsString()
   @IsNotEmpty()
-  tableName: string;
+  name: string;
 
   @ApiProperty({ enum: TableStatus, enumName: 'TableStatus' })
   @IsEnum(TableStatus)
@@ -20,7 +20,7 @@ export class CreateTableDto {
 export class EditTableDto {
   @IsString()
   @IsNotEmpty()
-  tableName: string;
+  name: string;
 
   @ApiProperty({ enum: TableStatus, enumName: 'TableStatus' })
   @IsEnum(TableStatus)

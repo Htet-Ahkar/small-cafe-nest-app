@@ -105,7 +105,7 @@ model Table {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  tableName   String      @unique
+  name        String      @unique
   status      TableStatus @default(AVAILABLE)
   description String?
 

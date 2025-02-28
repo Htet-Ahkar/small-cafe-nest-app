@@ -3,6 +3,8 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseIntPipe,
   Patch,
@@ -51,6 +53,7 @@ export class TableController {
   }
 
   // delete table by id
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Delete(':id')
   deleteTableById(
     @GetUser('id') userId: number,
