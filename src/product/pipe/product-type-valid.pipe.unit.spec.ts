@@ -5,6 +5,12 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateProductDto, EditProductDto } from '../dto';
 import { ProductType, UnitType } from '@prisma/client';
 
+const mockPrismaService = {
+  product: {
+    findUnique: jest.fn(),
+  },
+};
+
 describe('ProductTypeValidPipe', () => {
   let pipe: ProductTypeValidPipe;
   let prismaService: PrismaService;
@@ -26,11 +32,7 @@ describe('ProductTypeValidPipe', () => {
         ProductTypeValidPipe,
         {
           provide: PrismaService,
-          useValue: {
-            product: {
-              findUnique: jest.fn(),
-            },
-          },
+          useValue: mockPrismaService,
         },
       ],
     }).compile();

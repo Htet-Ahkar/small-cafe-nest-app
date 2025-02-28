@@ -1,12 +1,12 @@
 import { Test } from '@nestjs/testing';
 import { AppModule } from 'src/app.module';
 import { HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
-import { PrismaService } from '../src/prisma/prisma.service';
 import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
 import { EditUserDto } from 'src/user/dto';
 import { CreateCategoryDto, EditCategoryDto } from 'src/category/dto';
 import { ProductType, UnitType } from '@prisma/client';
+import { PrismaService } from 'src/prisma/prisma.service';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -16,6 +16,29 @@ describe('App e2e', () => {
   const token_userAt = `Bearer $S{${userAt}}`;
 
   const userName = 'user';
+
+  // Clean up helper function
+  enum Model {
+    CATEGORY = 'CATEGORY',
+    PRODUCT = 'PRODUCT',
+  }
+
+  const cleanUp = (models: Model[]) => {
+    models.forEach(async (model) => {
+      switch (model) {
+        case Model.CATEGORY:
+          await prismaService.category.deleteMany();
+          break;
+
+        case Model.PRODUCT:
+          await prismaService.product.deleteMany();
+          break;
+
+        default:
+          break;
+      }
+    });
+  };
 
   // Starting Logic
   beforeAll(async () => {
@@ -256,17 +279,16 @@ describe('App e2e', () => {
           .expectBodyContains(editDto.description);
       });
 
-      const editDto_withoutName = {
-        description: 'Category Description',
-      };
-
       it('should fail edit category by id', () => {
         return pactum
           .spec()
           .patch(localRoute + '/{id}')
           .withHeaders({ Authorization: token_userAt })
           .withPathParams('id', `$S{${categoryId}}`)
-          .withBody(editDto_withoutName)
+          .withBody({
+            ...editDto,
+            name: '',
+          })
           .expectStatus(HttpStatus.BAD_REQUEST);
       });
     });
@@ -289,6 +311,10 @@ describe('App e2e', () => {
           .expectStatus(HttpStatus.OK)
           .expectJsonLength(0);
       });
+    });
+
+    afterAll(async () => {
+      cleanUp([Model.CATEGORY]);
     });
   });
 
@@ -521,12 +547,12 @@ describe('App e2e', () => {
           .expectStatus(HttpStatus.NO_CONTENT);
       });
 
-      it('should delete breakfast set by id', () => {
+      it('should delete breakfast set by deleting category set', () => {
         return pactum
           .spec()
-          .delete(localRoute + '/{id}')
+          .delete('/category' + '/{id}')
           .withHeaders({ Authorization: token_userAt })
-          .withPathParams('id', `$S{${productId_breakfastSet}}`)
+          .withPathParams('id', `$S{${categoryId_breakfast}}`)
           .expectStatus(HttpStatus.NO_CONTENT);
       });
 
@@ -538,6 +564,10 @@ describe('App e2e', () => {
           .expectStatus(HttpStatus.OK)
           .expectJsonLength(0);
       });
+    });
+
+    afterAll(async () => {
+      cleanUp([Model.CATEGORY, Model.PRODUCT]);
     });
   });
 });
