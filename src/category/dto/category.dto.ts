@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
-export class CreateCategoryDto {
+class BaseCategoryDto {
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -13,17 +13,6 @@ export class CreateCategoryDto {
   @IsOptional()
   description?: string;
 }
+export class CreateCategoryDto extends BaseCategoryDto {}
 
-export class EditCategoryDto {
-  @IsString()
-  @IsNotEmpty()
-  name: string;
-
-  @IsString()
-  @IsOptional()
-  type?: string;
-
-  @IsString()
-  @IsOptional()
-  description?: string;
-}
+export class EditCategoryDto extends BaseCategoryDto {}
