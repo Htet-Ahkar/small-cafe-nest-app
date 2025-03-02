@@ -129,6 +129,7 @@ model Order {
   updatedAt DateTime @updatedAt
 
   status        OrderStatus   @default(PENDING)
+  type          OrderType     @default(POSTPAID)
   paymentMethod PaymentMethod @default(CASH)
   subtotal      Float // Before taxes and discounts
   // discount      Float? // Discount amount 
@@ -158,6 +159,12 @@ enum OrderStatus {
   PENDING
   COMPLETED
   CANCELED
+}
+
+enum OrderType {
+  PREPAID
+  POSTPAID
+  TAKEAWAY
 }
 
 model OrderItem {
