@@ -28,6 +28,10 @@ describe('CategoryService', () => {
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should be defined', () => {
     expect(categoryService).toBeDefined();
   });

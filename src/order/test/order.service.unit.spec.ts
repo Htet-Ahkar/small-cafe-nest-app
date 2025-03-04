@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { OrderService } from '../order.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderStatus, OrderType, PaymentMethod } from '@prisma/client';
+import { ForbiddenException } from '@nestjs/common';
 
 const mockPrismaService = {
   order: {
@@ -27,6 +28,10 @@ describe('OrderService', () => {
 
     orderService = module.get<OrderService>(OrderService);
     prismaService = module.get<PrismaService>(PrismaService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should be defined', () => {
@@ -142,11 +147,19 @@ describe('OrderService', () => {
         totalPrice: 10.01,
       };
       const updatedOrder = { id: orderId, ...dto, userId };
-      (prismaService.order.update as jest.Mock).mockResolvedValue(updatedOrder);
+      (prismaService.order.findFirst as jest.Mock).mockResolvedValue({
+        ...updatedOrder,
+      });
+      (prismaService.order.update as jest.Mock).mockResolvedValue({
+        ...updatedOrder,
+      });
 
       expect(await orderService.editOrderById(userId, orderId, dto)).toEqual(
         updatedOrder,
       );
+      expect(prismaService.order.findFirst).toHaveBeenCalledWith({
+        where: { userId, id: orderId },
+      });
       expect(prismaService.order.update).toHaveBeenCalledWith({
         where: { userId, id: orderId },
         data: { ...dto },
@@ -171,6 +184,116 @@ describe('OrderService', () => {
       await expect(
         orderService.editOrderById(userId, orderId, dto),
       ).rejects.toThrow('Order not found');
+    });
+
+    it('should handle editing a order with invalid data: status is CANCELED', async () => {
+      const userId = 1,
+        orderId = 1;
+      const dto = {
+        tableId: 1,
+        status: OrderStatus.CANCELED,
+        type: OrderType.POSTPAID,
+        paymentMethod: PaymentMethod.CASH,
+        subtotal: 10.01,
+        totalPrice: 10.01,
+      };
+      const updatedOrder = { id: orderId, ...dto, userId };
+      (prismaService.order.update as jest.Mock).mockResolvedValue({
+        ...updatedOrder,
+      });
+
+      await expect(
+        orderService.editOrderById(userId, orderId, dto),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Invalid action: Orders must be canceled via the /cancel route.',
+        ),
+      );
+
+      expect(prismaService.order.update).not.toHaveBeenCalled();
+    });
+
+    it('should handle editing a order with invalid data: status is COMPLETED', async () => {
+      const userId = 1,
+        orderId = 1;
+      const dto = {
+        tableId: 1,
+        status: OrderStatus.COMPLETED,
+        type: OrderType.POSTPAID,
+        paymentMethod: PaymentMethod.CASH,
+        subtotal: 10.01,
+        totalPrice: 10.01,
+      };
+      const updatedOrder = { id: orderId, ...dto, userId };
+      (prismaService.order.update as jest.Mock).mockResolvedValue({
+        ...updatedOrder,
+      });
+
+      await expect(
+        orderService.editOrderById(userId, orderId, dto),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Invalid action: Orders must be checkout via the /checkout route.',
+        ),
+      );
+
+      expect(prismaService.order.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if order is COMPLETED', async () => {
+      const userId = 1,
+        orderId = 1;
+      const dto = {
+        tableId: 1,
+        status: OrderStatus.PENDING,
+        type: OrderType.POSTPAID,
+        paymentMethod: PaymentMethod.CASH,
+        subtotal: 10.01,
+        totalPrice: 10.01,
+      };
+      const updatedOrder = { id: orderId, ...dto, userId };
+      (prismaService.order.findFirst as jest.Mock).mockResolvedValue({
+        ...updatedOrder,
+        status: OrderStatus.COMPLETED,
+      });
+
+      await expect(
+        orderService.editOrderById(userId, orderId, dto),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Invalid data: Order is already COMPLETED or CANCELED',
+        ),
+      );
+
+      expect(prismaService.order.update).not.toHaveBeenCalled();
+    });
+
+    it('should throw ForbiddenException if order is CANCELED', async () => {
+      const userId = 1,
+        orderId = 1;
+      const dto = {
+        tableId: 1,
+        status: OrderStatus.PENDING,
+        type: OrderType.POSTPAID,
+        paymentMethod: PaymentMethod.CASH,
+        subtotal: 10.01,
+        totalPrice: 10.01,
+      };
+      const updatedOrder = { id: orderId, ...dto, userId };
+      (prismaService.order.findFirst as jest.Mock).mockResolvedValue({
+        ...updatedOrder,
+        status: OrderStatus.CANCELED,
+      });
+
+      await expect(
+        orderService.editOrderById(userId, orderId, dto),
+      ).rejects.toThrow(
+        new ForbiddenException(
+          'Invalid data: Order is already COMPLETED or CANCELED',
+        ),
+      );
+
+      expect(prismaService.order.update).not.toHaveBeenCalled();
     });
   });
 

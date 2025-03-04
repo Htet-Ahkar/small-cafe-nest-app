@@ -1,9 +1,9 @@
 import { PrismaService } from 'src/prisma/prisma.service';
-import { ProductTypeValidPipe } from './product-type-valid.pipe';
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateProductDto, EditProductDto } from '../dto';
 import { ProductType, UnitType } from '@prisma/client';
+import { ProductTypeValidPipe } from '../pipe';
 
 const mockPrismaService = {
   product: {
@@ -39,6 +39,10 @@ describe('ProductTypeValidPipe', () => {
 
     pipe = module.get<ProductTypeValidPipe>(ProductTypeValidPipe);
     prismaService = module.get<PrismaService>(PrismaService);
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should throw BadRequestException for invalid JSON', async () => {

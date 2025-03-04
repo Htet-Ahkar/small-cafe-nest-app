@@ -29,6 +29,10 @@ describe('TableService', () => {
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('should be defined', () => {
     expect(tableService).toBeDefined();
   });
