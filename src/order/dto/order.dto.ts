@@ -10,6 +10,10 @@ import {
 } from 'class-validator';
 
 export class BaseOrderDto {
+  @IsNumber()
+  @IsNotEmpty()
+  tableId: number;
+
   @ApiProperty({ enum: OrderStatus, enumName: 'OrderStatus' })
   @IsEnum(OrderStatus)
   @IsNotEmpty()
@@ -45,3 +49,6 @@ export class BaseOrderDto {
 export class CreateOrderDto extends BaseOrderDto {}
 
 export class EditOrderDto extends BaseOrderDto {}
+
+// Remove multiple fields (e.g., `status` and `type`) from EditOrderDto
+// export class ExampleOrderDto extends OmitType(BaseOrderDto, ['status', 'type'] as const) {}
