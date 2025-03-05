@@ -7,6 +7,20 @@ import { OrderStatus } from '@prisma/client';
 export class OrderService {
   constructor(private readonly prismaService: PrismaService) {}
 
+  orderHelperFn = async (userId: number, id: number) => {
+    const order = await this.prismaService.order.findFirst({
+      where: {
+        userId,
+        id,
+      },
+    });
+
+    return {
+      data: () => order,
+      valid: () => order.status === OrderStatus.PENDING,
+    };
+  };
+
   async createOrder(userId: number, dto: CreateOrderDto) {
     return await this.prismaService.order.create({
       data: {
@@ -37,15 +51,9 @@ export class OrderService {
   }
 
   async editOrderById(userId: number, orderId: number, dto: EditOrderDto) {
-    const order = await this.prismaService.order.findFirst({
-      where: {
-        userId,
-        id: orderId,
-      },
-    });
-    const isOrderStatusValid = order.status === OrderStatus.PENDING;
+    const orderHelper = await this.orderHelperFn(userId, orderId);
 
-    if (!isOrderStatusValid) {
+    if (!orderHelper.valid()) {
       throw new ForbiddenException(
         'Invalid data: Order is already COMPLETED or CANCELED',
       );
@@ -71,15 +79,9 @@ export class OrderService {
   }
 
   async checkoutOrderById(userId: number, orderId: number) {
-    const order = await this.prismaService.order.findFirst({
-      where: {
-        userId,
-        id: orderId,
-      },
-    });
-    const isOrderStatusValid = order.status === OrderStatus.PENDING;
+    const orderHelper = await this.orderHelperFn(userId, orderId);
 
-    if (!isOrderStatusValid) {
+    if (!orderHelper.valid()) {
       throw new ForbiddenException(
         'Invalid data: Order is already COMPLETED or CANCELED',
       );
@@ -88,22 +90,17 @@ export class OrderService {
     return await this.prismaService.order.update({
       where: { userId, id: orderId },
       data: {
-        ...order,
+        ...orderHelper.data(),
         status: OrderStatus.COMPLETED,
+        completedAt: new Date(),
       },
     });
   }
 
   async cancelOrderById(userId: number, orderId: number) {
-    const order = await this.prismaService.order.findFirst({
-      where: {
-        userId,
-        id: orderId,
-      },
-    });
-    const isOrderStatusValid = order.status === OrderStatus.PENDING;
+    const orderHelper = await this.orderHelperFn(userId, orderId);
 
-    if (!isOrderStatusValid) {
+    if (!orderHelper.valid()) {
       throw new ForbiddenException(
         'Invalid data: Order is already COMPLETED or CANCELED',
       );
@@ -112,8 +109,9 @@ export class OrderService {
     return await this.prismaService.order.update({
       where: { userId, id: orderId },
       data: {
-        ...order,
+        ...orderHelper.data(),
         status: OrderStatus.CANCELED,
+        completedAt: new Date(),
       },
     });
   }

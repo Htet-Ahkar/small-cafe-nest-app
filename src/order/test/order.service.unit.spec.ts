@@ -269,6 +269,7 @@ describe('OrderService', () => {
       mockPrismaService.order.update.mockResolvedValue({
         ...updatedOrder,
         status: OrderStatus.COMPLETED,
+        completedAt: new Date(),
       });
 
       expect(await orderService.checkoutOrderById(userId, orderId));
@@ -277,7 +278,11 @@ describe('OrderService', () => {
       });
       expect(prismaService.order.update).toHaveBeenCalledWith({
         where: { userId, id: orderId },
-        data: { ...updatedOrder, status: OrderStatus.COMPLETED },
+        data: {
+          ...updatedOrder,
+          status: OrderStatus.COMPLETED,
+          completedAt: new Date(),
+        },
       });
     });
 
@@ -372,6 +377,7 @@ describe('OrderService', () => {
       mockPrismaService.order.update.mockResolvedValue({
         ...updatedOrder,
         status: OrderStatus.CANCELED,
+        completedAt: new Date(),
       });
 
       expect(await orderService.cancelOrderById(userId, orderId));
@@ -380,7 +386,11 @@ describe('OrderService', () => {
       });
       expect(prismaService.order.update).toHaveBeenCalledWith({
         where: { userId, id: orderId },
-        data: { ...updatedOrder, status: OrderStatus.CANCELED },
+        data: {
+          ...updatedOrder,
+          status: OrderStatus.CANCELED,
+          completedAt: new Date(),
+        },
       });
     });
 
