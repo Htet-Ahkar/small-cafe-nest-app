@@ -53,8 +53,8 @@ describe('TableAvailabilityPipe', () => {
     prismaService = module.get<PrismaService>(PrismaService);
   });
 
-  afterAll(async () => {
-    await jest.resetAllMocks();
+  afterEach(() => {
+    jest.resetAllMocks();
   });
 
   it('should throw NotFoundException if table does not exist', async () => {

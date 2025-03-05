@@ -46,7 +46,7 @@ export class OrderController {
     return this.orderService.getOrderById(userId, orderId);
   }
 
-  // edit order by id //! if order status is COMPELTED, don't allow to edit.
+  // edit order by id
   @Patch(':id')
   editOrderById(
     @GetUser('id') userId: number,
@@ -64,5 +64,23 @@ export class OrderController {
     @Param('id', ParseIntPipe) orderId: number,
   ) {
     return this.orderService.deleteOrderById(userId, orderId);
+  }
+
+  // checkout by id
+  @Patch(':id/checkout')
+  checkoutOrderById(
+    @GetUser('id') userId: number,
+    @Param('id', ParseIntPipe) orderId: number,
+  ) {
+    return this.orderService.checkoutOrderById(userId, orderId);
+  }
+
+  // cancel by id
+  @Patch(':id/cancel')
+  cancelOrderById(
+    @GetUser('id') userId: number,
+    @Param('id', ParseIntPipe) orderId: number,
+  ) {
+    return this.orderService.cancelOrderById(userId, orderId);
   }
 }

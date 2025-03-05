@@ -1,7 +1,8 @@
+// Remove multiple fields (e.g., `status` and `type`) from EditOrderDto
+// export class ExampleOrderDto extends OmitType(BaseOrderDto, ['status', 'type'] as const) {}
 import { ApiProperty } from '@nestjs/swagger';
-import { OrderStatus, OrderType, PaymentMethod } from '@prisma/client';
+import { OrderType, PaymentMethod } from '@prisma/client';
 import {
-  IsDate,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -13,11 +14,6 @@ export class BaseOrderDto {
   @IsNumber()
   @IsNotEmpty()
   tableId: number;
-
-  @ApiProperty({ enum: OrderStatus, enumName: 'OrderStatus' })
-  @IsEnum(OrderStatus)
-  @IsNotEmpty()
-  status: OrderStatus;
 
   @ApiProperty({ enum: OrderType, enumName: 'OrderType' })
   @IsEnum(OrderType)
@@ -40,15 +36,8 @@ export class BaseOrderDto {
   @IsString()
   @IsOptional()
   description?: string;
-
-  @IsDate()
-  @IsOptional()
-  completedAt?: Date;
 }
 
 export class CreateOrderDto extends BaseOrderDto {}
 
 export class EditOrderDto extends BaseOrderDto {}
-
-// Remove multiple fields (e.g., `status` and `type`) from EditOrderDto
-// export class ExampleOrderDto extends OmitType(BaseOrderDto, ['status', 'type'] as const) {}
