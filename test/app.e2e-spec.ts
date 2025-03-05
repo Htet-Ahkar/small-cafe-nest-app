@@ -346,34 +346,30 @@ describe('App e2e', () => {
     });
 
     describe('Create product', () => {
-      describe('Create two category for product', () => {
+      beforeAll(async () => {
         const localRoute = '/category';
 
-        it('should create category drink', () => {
-          return pactum
-            .spec()
-            .post(localRoute)
-            .withHeaders({ Authorization: token_userAt })
-            .withBody({
-              name: 'Drink',
-              type: 'drink',
-            })
-            .expectStatus(HttpStatus.CREATED)
-            .stores(categoryId_drink, 'id');
-        });
+        const drinkResponse = await pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            name: 'Drink',
+            type: 'drink',
+          })
+          .stores(categoryId_drink, 'id')
+          .expectStatus(HttpStatus.CREATED);
 
-        it('should create category set', () => {
-          return pactum
-            .spec()
-            .post(localRoute)
-            .withHeaders({ Authorization: token_userAt })
-            .withBody({
-              name: 'breakfast',
-              type: 'set',
-            })
-            .expectStatus(HttpStatus.CREATED)
-            .stores(categoryId_breakfast, 'id');
-        });
+        const breakfastResponse = await pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            name: 'breakfast',
+            type: 'set',
+          })
+          .stores(categoryId_breakfast, 'id')
+          .expectStatus(HttpStatus.CREATED);
       });
 
       it('should fail create coffee ', () => {
@@ -688,6 +684,229 @@ describe('App e2e', () => {
 
     afterAll(async () => {
       cleanUp([Model.TABLE]);
+    });
+  });
+
+  // order test
+  describe('Order', () => {
+    const localRoute = '/order';
+    const orderId = 'orderId';
+
+    // beforeAll(async () => {});
+
+    describe('Get empty order', () => {
+      it('should get empty order', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectBody([]);
+      });
+    });
+
+    describe('Create order', () => {
+      const categoryId_drink = 'categoryId_drink';
+      const categoryId_breakfast = 'categoryId_breakfast';
+
+      const productId_coffee = 'productId_coffee';
+      const productId_breakfastSet = 'productId_breakfastSet';
+
+      const tableAId = 'tableAId';
+      const tableBId = 'tableBId';
+      const tableCId = 'tableCId';
+
+      beforeAll(async () => {
+        const categoryRoute = '/category',
+          productRoute = '/product',
+          tableRoute = '/table';
+
+        // category create
+        const drinkCategoryResponse = await pactum
+            .spec()
+            .post(categoryRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody({
+              name: 'Drink',
+              type: 'drink',
+            })
+            .stores(categoryId_drink, 'id')
+            .expectStatus(HttpStatus.CREATED),
+          breakfastCategoryResponse = await pactum
+            .spec()
+            .post(categoryRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody({
+              name: 'breakfast',
+              type: 'set',
+            })
+            .stores(categoryId_breakfast, 'id')
+            .expectStatus(HttpStatus.CREATED),
+          // product create
+          coffeeProductResponse = await pactum
+            .spec()
+            .post(productRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody({
+              categoryId: `$S{${categoryId_drink}}`,
+              name: 'Coffee',
+              unit: UnitType.CUP,
+              price: 5,
+              trackStock: false,
+              stock: 20,
+              bundleItems: '[]',
+              type: ProductType.BUNDLE_ITEM,
+            })
+            .stores(productId_coffee, 'id')
+            .expectStatus(HttpStatus.CREATED),
+          bundleItems = [
+            {
+              productId: Number(pactum.stash.getDataStore(productId_coffee)),
+              quantity: 1,
+            },
+          ],
+          breakfastSetProductResponse = await pactum
+            .spec()
+            .post(productRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody({
+              categoryId: `$S{${categoryId_breakfast}}`,
+              name: 'Breakfast set',
+              unit: UnitType.SET,
+              price: 5,
+              trackStock: false,
+              stock: 20,
+              bundleItems: JSON.stringify(bundleItems),
+              type: ProductType.BUNDLE,
+            })
+            .stores(productId_breakfastSet, 'id')
+            .expectStatus(HttpStatus.CREATED),
+          // table create
+          tableAResponse = await pactum
+            .spec()
+            .post(tableRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody({
+              name: 'Table A',
+              status: TableStatus.AVAILABLE,
+            })
+            .expectStatus(HttpStatus.CREATED)
+            .stores(tableAId, 'id'),
+          tableBResponse = await pactum
+            .spec()
+            .post(tableRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody({
+              name: 'Table B',
+              status: TableStatus.OCCUPIED,
+            })
+            .expectStatus(HttpStatus.CREATED)
+            .stores(tableBId, 'id'),
+          tableCResponse = await pactum
+            .spec()
+            .post(tableRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody({
+              name: 'Table C',
+              status: TableStatus.RESERVED,
+            })
+            .expectStatus(HttpStatus.CREATED)
+            .stores(tableCId, 'id');
+      });
+
+      // const createDto: CreateCategoryDto = {
+      //   name: 'Category Name',
+      //   type: 'Category Type',
+      //   // description: 'Category Description',
+      // };
+
+      // it('should create category', () => {
+      //   return pactum
+      //     .spec()
+      //     .post(localRoute)
+      //     .withHeaders({ Authorization: token_userAt })
+      //     .withBody(createDto)
+      //     .expectStatus(HttpStatus.CREATED)
+      //     .stores(orderId, 'id');
+      // });
+    });
+
+    // describe('Get categories', () => {
+    //   it('should get categories', () => {
+    //     return pactum
+    //       .spec()
+    //       .get(localRoute)
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .expectStatus(HttpStatus.OK)
+    //       .expectJsonLength(1);
+    //   });
+    // });
+
+    // describe('Get category by id', () => {
+    //   it('should get category by id', () => {
+    //     return pactum
+    //       .spec()
+    //       .get(localRoute)
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .withPathParams('id', `$S{${orderId}}`)
+    //       .expectStatus(HttpStatus.OK)
+    //       .expectBodyContains(`$S{${orderId}}`);
+    //   });
+    // });
+
+    // describe('Edit category', () => {
+    //   const editDto: EditCategoryDto = {
+    //     name: 'Edited Name',
+    //     description: 'Category Description',
+    //   };
+
+    //   it('should edit category by id', () => {
+    //     return pactum
+    //       .spec()
+    //       .patch(localRoute + '/{id}')
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .withPathParams('id', `$S{${orderId}}`)
+    //       .withBody(editDto)
+    //       .expectStatus(HttpStatus.OK)
+    //       .expectBodyContains(editDto.description);
+    //   });
+
+    //   it('should fail edit category by id', () => {
+    //     return pactum
+    //       .spec()
+    //       .patch(localRoute + '/{id}')
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .withPathParams('id', `$S{${orderId}}`)
+    //       .withBody({
+    //         ...editDto,
+    //         name: '',
+    //       })
+    //       .expectStatus(HttpStatus.BAD_REQUEST);
+    //   });
+    // });
+
+    // describe('Delete category by id', () => {
+    //   it('should delete category by id', () => {
+    //     return pactum
+    //       .spec()
+    //       .delete(localRoute + '/{id}')
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .withPathParams('id', `$S{${orderId}}`)
+    //       .expectStatus(HttpStatus.NO_CONTENT);
+    //   });
+
+    //   it('should get empty category', () => {
+    //     return pactum
+    //       .spec()
+    //       .get(localRoute)
+    //       .withHeaders({ Authorization: token_userAt })
+    //       .expectStatus(HttpStatus.OK)
+    //       .expectJsonLength(0);
+    //   });
+    // });
+
+    afterAll(async () => {
+      cleanUp([Model.CATEGORY]);
     });
   });
 });
