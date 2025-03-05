@@ -15,7 +15,7 @@ import { OrderService } from './order.service';
 import { JwtGuard } from 'src/auth/guard';
 import { GetUser } from 'src/auth/decorator';
 import { CreateOrderDto, EditOrderDto } from './dto';
-import { TableAvailabilityPipe } from 'src/table/pipe';
+import { TableAvailabilityPipe } from './pipe';
 
 @UseGuards(JwtGuard)
 @Controller('order')

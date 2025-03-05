@@ -14,9 +14,8 @@ import {
 import { ProductService } from './product.service';
 import { GetUser } from 'src/auth/decorator';
 import { CreateProductDto, EditProductDto } from './dto';
-import { CategoryExistsPipe } from 'src/category/pipe';
 import { JwtGuard } from 'src/auth/guard';
-import { ProductTypeValidPipe } from './pipe';
+import { CategoryExistsPipe, ProductTypeValidPipe } from './pipe';
 
 @UseGuards(JwtGuard)
 @Controller('product')
