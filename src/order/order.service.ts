@@ -3,6 +3,7 @@ import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto, EditOrderDto } from './dto';
 import { OrderStatus } from '@prisma/client';
 
+type OrderItems = CreateOrderDto['orderItems'] | EditOrderDto['orderItems'];
 @Injectable()
 export class OrderService {
   constructor(private readonly prismaService: PrismaService) {}
@@ -21,13 +22,69 @@ export class OrderService {
     };
   };
 
+  duplicateOrderItemHelperFn(items: OrderItems) {
+    const findDuplicateOrderItems = (items: OrderItems) =>
+      items
+        .map((item) => item.productId)
+        .reduce(
+          ({ seen, duplicates }, id) => ({
+            duplicates: seen.has(id) ? [...duplicates, id] : duplicates,
+            seen: seen.has(id) ? seen : seen.add(id),
+          }),
+          { seen: new Set(), duplicates: [] },
+        ).duplicates;
+
+    const duplicates = findDuplicateOrderItems(items);
+
+    const checkDuplicateOrderItem = () => {
+      if (duplicates.length > 0) {
+        throw new ForbiddenException('Duplicate order items found');
+      }
+    };
+
+    return {
+      duplicates,
+      check: checkDuplicateOrderItem,
+    };
+  }
+
+  findDuplicateOrderItems = (
+    items: CreateOrderDto['orderItems'] | EditOrderDto['orderItems'],
+  ) =>
+    items
+      .map((item) => item.productId)
+      .reduce(
+        ({ seen, duplicates }, id) => ({
+          duplicates: seen.has(id) ? [...duplicates, id] : duplicates,
+          seen: seen.has(id) ? seen : seen.add(id),
+        }),
+        { seen: new Set(), duplicates: [] },
+      ).duplicates;
+
   async createOrder(userId: number, dto: CreateOrderDto) {
-    return await this.prismaService.order.create({
-      data: {
-        ...dto,
-        userId,
-        status: OrderStatus.PENDING,
+    const duplicateItemsHelper = this.duplicateOrderItemHelperFn(
+      dto.orderItems,
+    );
+    duplicateItemsHelper.check();
+
+    const orderData = {
+      ...dto,
+      userId,
+      orderItems: {
+        create: dto.orderItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+        })),
       },
+    };
+
+    return await this.prismaService.$transaction(async (prisma) => {
+      const order = await prisma.order.create({
+        data: { ...orderData },
+      });
+
+      return order;
     });
   }
 
@@ -50,8 +107,13 @@ export class OrderService {
     return order;
   }
 
+  // todo: need to implement order items update
   async editOrderById(userId: number, orderId: number, dto: EditOrderDto) {
     const orderHelper = await this.orderHelperFn(userId, orderId);
+    const duplicateItemsHelper = this.duplicateOrderItemHelperFn(
+      dto.orderItems,
+    );
+    duplicateItemsHelper.check();
 
     if (!orderHelper.valid()) {
       throw new ForbiddenException(

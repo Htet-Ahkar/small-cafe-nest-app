@@ -25,6 +25,13 @@ const mockValue = {
   paymentMethod: PaymentMethod.CASH,
   subtotal: 10,
   totalPrice: 10,
+  orderItems: [
+    {
+      productId: 1,
+      quantity: 1,
+      price: 10,
+    },
+  ],
 };
 
 describe('TableAvailabilityPipe', () => {

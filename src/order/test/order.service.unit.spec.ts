@@ -5,15 +5,13 @@ import { OrderStatus, OrderType, PaymentMethod } from '@prisma/client';
 import { ForbiddenException } from '@nestjs/common';
 
 const mockPrismaService = {
+  $transaction: jest.fn(),
   order: {
     findMany: jest.fn(),
     findFirst: jest.fn(),
     create: jest.fn(),
     update: jest.fn(),
     delete: jest.fn(),
-  },
-  user: {
-    findFirst: jest.fn(),
   },
 };
 
@@ -91,23 +89,64 @@ describe('OrderService', () => {
   // Create
   describe('Create order', () => {
     it('should create an order', async () => {
-      const userId = 1;
+      const userId = 1,
+        tableId = 1;
       const dto = {
-        tableId: 1,
+        tableId,
         status: OrderStatus.PENDING,
         type: OrderType.POSTPAID,
         paymentMethod: PaymentMethod.CASH,
         subtotal: 10.01,
         totalPrice: 10.01,
+        orderItems: [
+          {
+            productId: 1,
+            quantity: 1,
+            price: 10,
+          },
+        ],
       };
 
       const createdOrder = { id: 1, ...dto, userId };
-      mockPrismaService.order.create.mockResolvedValue(createdOrder);
+
+      mockPrismaService.$transaction.mockResolvedValue(createdOrder);
 
       expect(await orderService.createOrder(userId, dto)).toEqual(createdOrder);
-      expect(prismaService.order.create).toHaveBeenCalledWith({
-        data: { userId, ...dto },
-      });
+      expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('should handle if duplicate order items found', async () => {
+      const userId = 1,
+        tableId = 1;
+      const dto = {
+        tableId,
+        status: OrderStatus.PENDING,
+        type: OrderType.POSTPAID,
+        paymentMethod: PaymentMethod.CASH,
+        subtotal: 10.01,
+        totalPrice: 10.01,
+        orderItems: [
+          {
+            productId: 1,
+            quantity: 1,
+            price: 10,
+          },
+          {
+            productId: 1,
+            quantity: 1,
+            price: 10,
+          },
+        ],
+      };
+
+      const createdOrder = { id: 1, ...dto, userId };
+
+      mockPrismaService.$transaction.mockResolvedValue(createdOrder);
+
+      await expect(orderService.createOrder(userId, dto)).rejects.toThrow(
+        new ForbiddenException('Duplicate order items found'),
+      );
+      expect(prismaService.order.update).not.toHaveBeenCalled();
     });
   });
 
@@ -123,6 +162,13 @@ describe('OrderService', () => {
         paymentMethod: PaymentMethod.CASH,
         subtotal: 10.01,
         totalPrice: 10.01,
+        orderItems: [
+          {
+            productId: 1,
+            quantity: 1,
+            price: 10,
+          },
+        ],
       };
       const updatedOrder = { id: orderId, ...dto, userId };
       mockPrismaService.order.findFirst.mockResolvedValue(updatedOrder);
@@ -140,6 +186,40 @@ describe('OrderService', () => {
       });
     });
 
+    // it('should handle if duplicate order items found', async () => {
+    //   const userId = 1,
+    //     tableId = 1;
+    //   const dto = {
+    //     tableId,
+    //     status: OrderStatus.PENDING,
+    //     type: OrderType.POSTPAID,
+    //     paymentMethod: PaymentMethod.CASH,
+    //     subtotal: 10.01,
+    //     totalPrice: 10.01,
+    //     orderItems: [
+    //       {
+    //         productId: 1,
+    //         quantity: 1,
+    //         price: 10,
+    //       },
+    //       {
+    //         productId: 1,
+    //         quantity: 1,
+    //         price: 10,
+    //       },
+    //     ],
+    //   };
+
+    //   const createdOrder = { id: 1, ...dto, userId };
+
+    //   mockPrismaService.$transaction.mockResolvedValue(createdOrder);
+
+    //   await expect(orderService.createOrder(userId, dto)).rejects.toThrow(
+    //     new ForbiddenException('Duplicate order items found'),
+    //   );
+    //   expect(prismaService.order.update).not.toHaveBeenCalled();
+    // });
+
     it('should handle editing a non-existent order', async () => {
       const userId = 1,
         orderId = 999;
@@ -150,6 +230,13 @@ describe('OrderService', () => {
         paymentMethod: PaymentMethod.CASH,
         subtotal: 10.01,
         totalPrice: 10.01,
+        orderItems: [
+          {
+            productId: 1,
+            quantity: 1,
+            price: 10,
+          },
+        ],
       };
       mockPrismaService.order.update.mockRejectedValue(
         new Error('Order not found'),
@@ -170,6 +257,13 @@ describe('OrderService', () => {
         paymentMethod: PaymentMethod.CASH,
         subtotal: 10.01,
         totalPrice: 10.01,
+        orderItems: [
+          {
+            productId: 1,
+            quantity: 1,
+            price: 10,
+          },
+        ],
       };
       const updatedOrder = { id: orderId, ...dto, userId };
       mockPrismaService.order.findFirst.mockResolvedValue({
@@ -198,6 +292,13 @@ describe('OrderService', () => {
         paymentMethod: PaymentMethod.CASH,
         subtotal: 10.01,
         totalPrice: 10.01,
+        orderItems: [
+          {
+            productId: 1,
+            quantity: 1,
+            price: 10,
+          },
+        ],
       };
       const updatedOrder = { id: orderId, ...dto, userId };
       mockPrismaService.order.findFirst.mockResolvedValue({

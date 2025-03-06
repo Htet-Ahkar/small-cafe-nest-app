@@ -3,6 +3,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { OrderType, PaymentMethod } from '@prisma/client';
 import {
+  ArrayNotEmpty,
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsNumber,
@@ -25,6 +27,11 @@ export class BaseOrderDto {
   @IsNotEmpty()
   paymentMethod: PaymentMethod;
 
+  @IsArray()
+  @ArrayNotEmpty()
+  orderItems: OrderItem[];
+
+  //* I think I need to remove price to remove furthur confusion
   @IsNumber()
   @IsNotEmpty()
   subtotal: number;
@@ -36,6 +43,20 @@ export class BaseOrderDto {
   @IsString()
   @IsOptional()
   description?: string;
+}
+
+class OrderItem {
+  @IsNumber()
+  @IsNotEmpty()
+  productId: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  quantity: number;
+
+  @IsNumber()
+  @IsNotEmpty()
+  price: number;
 }
 
 export class CreateOrderDto extends BaseOrderDto {}
