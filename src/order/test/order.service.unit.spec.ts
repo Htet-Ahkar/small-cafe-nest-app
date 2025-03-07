@@ -13,6 +13,12 @@ const mockPrismaService = {
     update: jest.fn(),
     delete: jest.fn(),
   },
+  orderItem: {
+    findMany: jest.fn(),
+    createMany: jest.fn(),
+    update: jest.fn(),
+    deleteMany: jest.fn(),
+  },
 };
 
 describe('OrderService', () => {
@@ -50,7 +56,7 @@ describe('OrderService', () => {
       mockPrismaService.order.findMany.mockResolvedValue(orders);
 
       expect(await orderService.getOrders(userId)).toEqual(orders);
-      expect(prismaService.order.findMany).toHaveBeenCalledWith({
+      expect(mockPrismaService.order.findMany).toHaveBeenCalledWith({
         where: { userId },
       });
     });
@@ -72,7 +78,7 @@ describe('OrderService', () => {
       mockPrismaService.order.findFirst.mockResolvedValue(order);
 
       expect(await orderService.getOrderById(userId, orderId)).toEqual(order);
-      expect(prismaService.order.findFirst).toHaveBeenCalledWith({
+      expect(mockPrismaService.order.findFirst).toHaveBeenCalledWith({
         where: { userId, id: orderId },
       });
     });
@@ -90,232 +96,208 @@ describe('OrderService', () => {
   describe('Create order', () => {
     it('should create an order', async () => {
       const userId = 1,
-        tableId = 1;
-      const dto = {
-        tableId,
-        status: OrderStatus.PENDING,
-        type: OrderType.POSTPAID,
-        paymentMethod: PaymentMethod.CASH,
-        subtotal: 10.01,
-        totalPrice: 10.01,
-        orderItems: [
-          {
-            productId: 1,
-            quantity: 1,
-            price: 10,
-          },
-        ],
+        tableId = 1,
+        dto = {
+          tableId,
+          status: OrderStatus.PENDING,
+          type: OrderType.POSTPAID,
+          paymentMethod: PaymentMethod.CASH,
+          subtotal: 10.01,
+          totalPrice: 10.01,
+          orderItems: [
+            {
+              productId: 1,
+              quantity: 1,
+              price: 10,
+            },
+          ],
+        };
+
+      const createdOrder = { ...dto, userId };
+      const orderData = {
+        ...dto,
+        userId,
+        orderItems: {
+          create: dto.orderItems.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        },
       };
 
-      const createdOrder = { id: 1, ...dto, userId };
-
-      mockPrismaService.$transaction.mockResolvedValue(createdOrder);
+      // Mock the behavior of $transaction
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService);
+      });
+      mockPrismaService.order.create.mockResolvedValue(createdOrder);
 
       expect(await orderService.createOrder(userId, dto)).toEqual(createdOrder);
-      expect(prismaService.$transaction).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle if duplicate order items found', async () => {
-      const userId = 1,
-        tableId = 1;
-      const dto = {
-        tableId,
-        status: OrderStatus.PENDING,
-        type: OrderType.POSTPAID,
-        paymentMethod: PaymentMethod.CASH,
-        subtotal: 10.01,
-        totalPrice: 10.01,
-        orderItems: [
-          {
-            productId: 1,
-            quantity: 1,
-            price: 10,
-          },
-          {
-            productId: 1,
-            quantity: 1,
-            price: 10,
-          },
-        ],
-      };
-
-      const createdOrder = { id: 1, ...dto, userId };
-
-      mockPrismaService.$transaction.mockResolvedValue(createdOrder);
-
-      await expect(orderService.createOrder(userId, dto)).rejects.toThrow(
-        new ForbiddenException('Duplicate order items found'),
-      );
-      expect(prismaService.order.update).not.toHaveBeenCalled();
+      expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.order.create).toHaveBeenCalledWith({
+        data: { ...orderData },
+      });
     });
   });
 
   // Edit
   describe('Edit order by id', () => {
-    it('should edit an order by id', async () => {
+    it('should successfully edit an order and update order items', async () => {
+      // Arrange (Mock Data)
       const userId = 1,
-        orderId = 1;
-      const dto = {
-        tableId: 1,
-        status: OrderStatus.PENDING,
-        type: OrderType.POSTPAID,
-        paymentMethod: PaymentMethod.CASH,
-        subtotal: 10.01,
-        totalPrice: 10.01,
-        orderItems: [
-          {
-            productId: 1,
-            quantity: 1,
-            price: 10,
-          },
-        ],
-      };
+        orderId = 1,
+        dto = {
+          tableId: 1,
+          status: OrderStatus.PENDING,
+          type: OrderType.POSTPAID,
+          paymentMethod: PaymentMethod.CASH,
+          subtotal: 10.01,
+          totalPrice: 10.01,
+          orderItems: [
+            { productId: 3, quantity: 1, price: 35 },
+            { productId: 4, quantity: 2, price: 40 },
+            { productId: 5, quantity: 2, price: 50 },
+          ],
+        };
+
+      const { orderItems, ...orderData } = dto;
       const updatedOrder = { id: orderId, ...dto, userId };
-      mockPrismaService.order.findFirst.mockResolvedValue(updatedOrder);
-      mockPrismaService.order.update.mockResolvedValue(updatedOrder);
 
-      expect(await orderService.editOrderById(userId, orderId, dto)).toEqual(
-        updatedOrder,
-      );
-      expect(prismaService.order.findFirst).toHaveBeenCalledWith({
-        where: { userId, id: orderId },
-      });
-      expect(prismaService.order.update).toHaveBeenCalledWith({
-        where: { userId, id: orderId },
-        data: { ...dto },
-      });
-    });
+      const dbOrderItems = [
+        { id: 1, productId: 1, quantity: 1, price: 10 },
+        { id: 2, productId: 2, quantity: 1, price: 20 },
+        { id: 3, productId: 3, quantity: 1, price: 30 },
+      ];
 
-    // it('should handle if duplicate order items found', async () => {
-    //   const userId = 1,
-    //     tableId = 1;
-    //   const dto = {
-    //     tableId,
-    //     status: OrderStatus.PENDING,
-    //     type: OrderType.POSTPAID,
-    //     paymentMethod: PaymentMethod.CASH,
-    //     subtotal: 10.01,
-    //     totalPrice: 10.01,
-    //     orderItems: [
-    //       {
-    //         productId: 1,
-    //         quantity: 1,
-    //         price: 10,
-    //       },
-    //       {
-    //         productId: 1,
-    //         quantity: 1,
-    //         price: 10,
-    //       },
-    //     ],
-    //   };
-
-    //   const createdOrder = { id: 1, ...dto, userId };
-
-    //   mockPrismaService.$transaction.mockResolvedValue(createdOrder);
-
-    //   await expect(orderService.createOrder(userId, dto)).rejects.toThrow(
-    //     new ForbiddenException('Duplicate order items found'),
-    //   );
-    //   expect(prismaService.order.update).not.toHaveBeenCalled();
-    // });
-
-    it('should handle editing a non-existent order', async () => {
-      const userId = 1,
-        orderId = 999;
-      const dto = {
-        tableId: 1,
-        status: OrderStatus.PENDING,
-        type: OrderType.POSTPAID,
-        paymentMethod: PaymentMethod.CASH,
-        subtotal: 10.01,
-        totalPrice: 10.01,
-        orderItems: [
-          {
-            productId: 1,
-            quantity: 1,
-            price: 10,
-          },
-        ],
+      const categorizedItems = {
+        getItems: () => ({
+          itemsToCreate: [
+            { productId: 4, quantity: 2, price: 40 },
+            { productId: 5, quantity: 2, price: 50 },
+          ],
+          itemsToUpdate: [
+            {
+              id: 3,
+              productId: 3,
+              quantity: 1,
+              price: 30,
+            },
+          ],
+          itemsToDelete: [
+            {
+              id: 1,
+              productId: 1,
+              quantity: 1,
+              price: 10,
+            },
+            {
+              id: 2,
+              productId: 2,
+              quantity: 1,
+              price: 20,
+            },
+          ],
+        }),
       };
-      mockPrismaService.order.update.mockRejectedValue(
-        new Error('Order not found'),
-      );
 
-      await expect(
-        orderService.editOrderById(userId, orderId, dto),
-      ).rejects.toThrow('Order not found');
-    });
+      const { itemsToCreate, itemsToUpdate, itemsToDelete } =
+        categorizedItems.getItems();
 
-    it('should throw ForbiddenException if orde status is COMPLETED', async () => {
-      const userId = 1,
-        orderId = 1;
-      const dto = {
-        tableId: 1,
-        status: OrderStatus.PENDING,
-        type: OrderType.POSTPAID,
-        paymentMethod: PaymentMethod.CASH,
-        subtotal: 10.01,
-        totalPrice: 10.01,
-        orderItems: [
-          {
-            productId: 1,
-            quantity: 1,
-            price: 10,
-          },
-        ],
-      };
-      const updatedOrder = { id: orderId, ...dto, userId };
-      mockPrismaService.order.findFirst.mockResolvedValue({
+      // Mock helper functions
+      jest.spyOn(orderService, 'orderHelperFn').mockResolvedValue({
+        getOrder: jest.fn(),
+        valid: () => true,
+      });
+      jest
+        .spyOn(orderService, 'onCategorizeItems')
+        .mockReturnValue(categorizedItems);
+
+      // Mock the behavior of $transaction
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return callback(mockPrismaService);
+      });
+      mockPrismaService.order.update.mockResolvedValue({
         ...updatedOrder,
-        status: OrderStatus.COMPLETED,
       });
+      mockPrismaService.orderItem.findMany.mockResolvedValue(dbOrderItems);
+      mockPrismaService.orderItem.createMany.mockResolvedValue(itemsToCreate);
+      mockPrismaService.orderItem.update.mockResolvedValue(dbOrderItems);
+      mockPrismaService.orderItem.deleteMany.mockResolvedValue(dbOrderItems);
 
-      await expect(
-        orderService.editOrderById(userId, orderId, dto),
-      ).rejects.toThrow(
-        new ForbiddenException(
-          'Invalid data: Order is already COMPLETED or CANCELED',
-        ),
-      );
-
-      expect(prismaService.order.update).not.toHaveBeenCalled();
-    });
-
-    it('should throw ForbiddenException if order status is CANCELED', async () => {
-      const userId = 1,
-        orderId = 1;
-      const dto = {
-        tableId: 1,
-        status: OrderStatus.PENDING,
-        type: OrderType.POSTPAID,
-        paymentMethod: PaymentMethod.CASH,
-        subtotal: 10.01,
-        totalPrice: 10.01,
-        orderItems: [
-          {
-            productId: 1,
-            quantity: 1,
-            price: 10,
-          },
-        ],
-      };
-      const updatedOrder = { id: orderId, ...dto, userId };
-      mockPrismaService.order.findFirst.mockResolvedValue({
+      // Act
+      expect(await orderService.editOrderById(userId, orderId, dto)).toEqual({
         ...updatedOrder,
-        status: OrderStatus.CANCELED,
       });
 
-      await expect(
-        orderService.editOrderById(userId, orderId, dto),
-      ).rejects.toThrow(
-        new ForbiddenException(
-          'Invalid data: Order is already COMPLETED or CANCELED',
-        ),
-      );
+      // Assert
+      expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(1);
 
-      expect(prismaService.order.update).not.toHaveBeenCalled();
+      expect(mockPrismaService.order.update).toHaveBeenCalledWith({
+        where: { userId, id: orderId },
+        data: orderData,
+      });
+
+      expect(mockPrismaService.orderItem.createMany).toHaveBeenCalledWith({
+        data: itemsToCreate.map((item) => ({ ...item, orderId })),
+      });
+
+      itemsToUpdate.map((item) => {
+        expect(mockPrismaService.orderItem.update).toHaveBeenCalledWith({
+          where: { id: item.id, orderId },
+          data: { ...item, orderId },
+        });
+      });
+
+      expect(mockPrismaService.orderItem.deleteMany).toHaveBeenCalledWith({
+        where: {
+          OR: itemsToDelete.map(({ id }) => ({ id, orderId })),
+        },
+      });
     });
+
+    it.each([
+      [
+        OrderStatus.COMPLETED,
+        'Invalid data: Order is already COMPLETED or CANCELED',
+      ],
+      [
+        OrderStatus.CANCELED,
+        'Invalid data: Order is already COMPLETED or CANCELED',
+      ],
+    ])(
+      'should throw ForbiddenException if order status is %s',
+      async (status, errorMessage) => {
+        const userId = 1,
+          orderId = 1;
+        const dto = {
+          tableId: 1,
+          status: OrderStatus.PENDING,
+          type: OrderType.POSTPAID,
+          paymentMethod: PaymentMethod.CASH,
+          subtotal: 10.01,
+          totalPrice: 10.01,
+          orderItems: [
+            {
+              productId: 1,
+              quantity: 1,
+              price: 10,
+            },
+          ],
+        };
+        const updatedOrder = { id: orderId, ...dto, userId };
+
+        mockPrismaService.order.findFirst.mockResolvedValue({
+          ...updatedOrder,
+          status,
+        });
+
+        await expect(
+          orderService.editOrderById(userId, orderId, dto),
+        ).rejects.toThrow(new ForbiddenException(errorMessage));
+
+        expect(mockPrismaService.order.update).not.toHaveBeenCalled();
+      },
+    );
   });
 
   // Delete
@@ -333,7 +315,7 @@ describe('OrderService', () => {
       expect(await orderService.deleteOrderById(userId, orderId)).toEqual(
         deletedOrder,
       );
-      expect(prismaService.order.delete).toHaveBeenCalledWith({
+      expect(mockPrismaService.order.delete).toHaveBeenCalledWith({
         where: { userId, id: orderId },
       });
     });
@@ -374,10 +356,10 @@ describe('OrderService', () => {
       });
 
       expect(await orderService.checkoutOrderById(userId, orderId));
-      expect(prismaService.order.findFirst).toHaveBeenCalledWith({
+      expect(mockPrismaService.order.findFirst).toHaveBeenCalledWith({
         where: { userId, id: orderId },
       });
-      expect(prismaService.order.update).toHaveBeenCalledWith({
+      expect(mockPrismaService.order.update).toHaveBeenCalledWith({
         where: { userId, id: orderId },
         data: {
           ...updatedOrder,
@@ -400,63 +382,49 @@ describe('OrderService', () => {
       ).rejects.toThrow('Order not found');
     });
 
-    it('should throw ForbiddenException if order status is CANCELED', async () => {
-      const userId = 1,
-        orderId = 1,
-        dto = {
+    it.each([
+      [
+        OrderStatus.COMPLETED,
+        'Invalid data: Order is already COMPLETED or CANCELED',
+      ],
+      [
+        OrderStatus.CANCELED,
+        'Invalid data: Order is already COMPLETED or CANCELED',
+      ],
+    ])(
+      'should throw ForbiddenException if order status is %s',
+      async (status, errorMessage) => {
+        const userId = 1,
+          orderId = 1;
+        const dto = {
           tableId: 1,
           status: OrderStatus.PENDING,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
           subtotal: 10.01,
           totalPrice: 10.01,
-        },
-        updatedOrder = { id: orderId, ...dto, userId };
+          orderItems: [
+            {
+              productId: 1,
+              quantity: 1,
+              price: 10,
+            },
+          ],
+        };
+        const updatedOrder = { id: orderId, ...dto, userId };
 
-      mockPrismaService.order.findFirst.mockResolvedValue({
-        ...updatedOrder,
-        status: OrderStatus.CANCELED,
-      });
+        mockPrismaService.order.findFirst.mockResolvedValue({
+          ...updatedOrder,
+          status,
+        });
 
-      await expect(
-        orderService.checkoutOrderById(userId, orderId),
-      ).rejects.toThrow(
-        new ForbiddenException(
-          'Invalid data: Order is already COMPLETED or CANCELED',
-        ),
-      );
+        await expect(
+          orderService.checkoutOrderById(userId, orderId),
+        ).rejects.toThrow(new ForbiddenException(errorMessage));
 
-      expect(prismaService.order.update).not.toHaveBeenCalled();
-    });
-
-    it('should throw ForbiddenException if order status is COMPLETED', async () => {
-      const userId = 1,
-        orderId = 1,
-        dto = {
-          tableId: 1,
-          status: OrderStatus.PENDING,
-          type: OrderType.POSTPAID,
-          paymentMethod: PaymentMethod.CASH,
-          subtotal: 10.01,
-          totalPrice: 10.01,
-        },
-        updatedOrder = { id: orderId, ...dto, userId };
-
-      mockPrismaService.order.findFirst.mockResolvedValue({
-        ...updatedOrder,
-        status: OrderStatus.COMPLETED,
-      });
-
-      await expect(
-        orderService.checkoutOrderById(userId, orderId),
-      ).rejects.toThrow(
-        new ForbiddenException(
-          'Invalid data: Order is already COMPLETED or CANCELED',
-        ),
-      );
-
-      expect(prismaService.order.update).not.toHaveBeenCalled();
-    });
+        expect(mockPrismaService.order.update).not.toHaveBeenCalled();
+      },
+    );
   });
 
   // Cancel
@@ -482,10 +450,10 @@ describe('OrderService', () => {
       });
 
       expect(await orderService.cancelOrderById(userId, orderId));
-      expect(prismaService.order.findFirst).toHaveBeenCalledWith({
+      expect(mockPrismaService.order.findFirst).toHaveBeenCalledWith({
         where: { userId, id: orderId },
       });
-      expect(prismaService.order.update).toHaveBeenCalledWith({
+      expect(mockPrismaService.order.update).toHaveBeenCalledWith({
         where: { userId, id: orderId },
         data: {
           ...updatedOrder,
@@ -508,62 +476,48 @@ describe('OrderService', () => {
       ).rejects.toThrow('Order not found');
     });
 
-    it('should throw ForbiddenException if order status is CANCELED', async () => {
-      const userId = 1,
-        orderId = 1,
-        dto = {
+    it.each([
+      [
+        OrderStatus.COMPLETED,
+        'Invalid data: Order is already COMPLETED or CANCELED',
+      ],
+      [
+        OrderStatus.CANCELED,
+        'Invalid data: Order is already COMPLETED or CANCELED',
+      ],
+    ])(
+      'should throw ForbiddenException if order status is %s',
+      async (status, errorMessage) => {
+        const userId = 1,
+          orderId = 1;
+        const dto = {
           tableId: 1,
           status: OrderStatus.PENDING,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
           subtotal: 10.01,
           totalPrice: 10.01,
-        },
-        updatedOrder = { id: orderId, ...dto, userId };
+          orderItems: [
+            {
+              productId: 1,
+              quantity: 1,
+              price: 10,
+            },
+          ],
+        };
+        const updatedOrder = { id: orderId, ...dto, userId };
 
-      mockPrismaService.order.findFirst.mockResolvedValue({
-        ...updatedOrder,
-        status: OrderStatus.CANCELED,
-      });
+        mockPrismaService.order.findFirst.mockResolvedValue({
+          ...updatedOrder,
+          status,
+        });
 
-      await expect(
-        orderService.cancelOrderById(userId, orderId),
-      ).rejects.toThrow(
-        new ForbiddenException(
-          'Invalid data: Order is already COMPLETED or CANCELED',
-        ),
-      );
+        await expect(
+          orderService.cancelOrderById(userId, orderId),
+        ).rejects.toThrow(new ForbiddenException(errorMessage));
 
-      expect(prismaService.order.update).not.toHaveBeenCalled();
-    });
-
-    it('should throw ForbiddenException if order status is COMPLETED', async () => {
-      const userId = 1,
-        orderId = 1,
-        dto = {
-          tableId: 1,
-          status: OrderStatus.PENDING,
-          type: OrderType.POSTPAID,
-          paymentMethod: PaymentMethod.CASH,
-          subtotal: 10.01,
-          totalPrice: 10.01,
-        },
-        updatedOrder = { id: orderId, ...dto, userId };
-
-      mockPrismaService.order.findFirst.mockResolvedValue({
-        ...updatedOrder,
-        status: OrderStatus.COMPLETED,
-      });
-
-      await expect(
-        orderService.cancelOrderById(userId, orderId),
-      ).rejects.toThrow(
-        new ForbiddenException(
-          'Invalid data: Order is already COMPLETED or CANCELED',
-        ),
-      );
-
-      expect(prismaService.order.update).not.toHaveBeenCalled();
-    });
+        expect(mockPrismaService.order.update).not.toHaveBeenCalled();
+      },
+    );
   });
 });

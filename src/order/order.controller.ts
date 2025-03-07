@@ -22,6 +22,7 @@ import { TableAvailabilityPipe } from './pipe';
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
+  //! need to add order items valid pipe
   // create order
   @Post()
   createOrder(
@@ -46,6 +47,7 @@ export class OrderController {
     return this.orderService.getOrderById(userId, orderId);
   }
 
+  //! need to add order items valid pipe
   // edit order by id
   @Patch(':id')
   editOrderById(
