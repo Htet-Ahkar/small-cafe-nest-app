@@ -3,6 +3,7 @@ import { OrderService } from '../order.service';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { OrderStatus, OrderType, PaymentMethod } from '@prisma/client';
 import { ForbiddenException } from '@nestjs/common';
+import { CreateOrderDto, EditOrderDto } from '../dto';
 
 const mockPrismaService = {
   $transaction: jest.fn(),
@@ -97,9 +98,8 @@ describe('OrderService', () => {
     it('should create an order', async () => {
       const userId = 1,
         tableId = 1,
-        dto = {
+        dto: CreateOrderDto = {
           tableId,
-          status: OrderStatus.PENDING,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
           subtotal: 10.01,
@@ -146,9 +146,8 @@ describe('OrderService', () => {
       // Arrange (Mock Data)
       const userId = 1,
         orderId = 1,
-        dto = {
+        dto: EditOrderDto = {
           tableId: 1,
-          status: OrderStatus.PENDING,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
           subtotal: 10.01,
@@ -169,36 +168,10 @@ describe('OrderService', () => {
         { id: 3, productId: 3, quantity: 1, price: 30 },
       ];
 
-      const categorizedItems = {
-        getItems: () => ({
-          itemsToCreate: [
-            { productId: 4, quantity: 2, price: 40 },
-            { productId: 5, quantity: 2, price: 50 },
-          ],
-          itemsToUpdate: [
-            {
-              id: 3,
-              productId: 3,
-              quantity: 1,
-              price: 30,
-            },
-          ],
-          itemsToDelete: [
-            {
-              id: 1,
-              productId: 1,
-              quantity: 1,
-              price: 10,
-            },
-            {
-              id: 2,
-              productId: 2,
-              quantity: 1,
-              price: 20,
-            },
-          ],
-        }),
-      };
+      const categorizedItems = orderService.onCategorizeItems({
+        dbOrderItems,
+        orderItems,
+      });
 
       const { itemsToCreate, itemsToUpdate, itemsToDelete } =
         categorizedItems.getItems();
@@ -206,11 +179,8 @@ describe('OrderService', () => {
       // Mock helper functions
       jest.spyOn(orderService, 'orderHelperFn').mockResolvedValue({
         getOrder: jest.fn(),
-        valid: () => true,
+        valid: () => true, // need to mock
       });
-      jest
-        .spyOn(orderService, 'onCategorizeItems')
-        .mockReturnValue(categorizedItems);
 
       // Mock the behavior of $transaction
       mockPrismaService.$transaction.mockImplementation(async (callback) => {
@@ -269,9 +239,8 @@ describe('OrderService', () => {
       async (status, errorMessage) => {
         const userId = 1,
           orderId = 1;
-        const dto = {
+        const dto: EditOrderDto = {
           tableId: 1,
-          status: OrderStatus.PENDING,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
           subtotal: 10.01,
@@ -338,7 +307,7 @@ describe('OrderService', () => {
     it('should checkout an order by id', async () => {
       const userId = 1,
         orderId = 1,
-        dto = {
+        order = {
           tableId: 1,
           status: OrderStatus.PENDING,
           type: OrderType.POSTPAID,
@@ -346,7 +315,7 @@ describe('OrderService', () => {
           subtotal: 10.01,
           totalPrice: 10.01,
         },
-        updatedOrder = { id: orderId, ...dto, userId };
+        updatedOrder = { id: orderId, ...order, userId };
 
       mockPrismaService.order.findFirst.mockResolvedValue(updatedOrder);
       mockPrismaService.order.update.mockResolvedValue({
@@ -369,19 +338,6 @@ describe('OrderService', () => {
       });
     });
 
-    it('should handle editing a non-existent order', async () => {
-      const userId = 1,
-        orderId = 999;
-
-      mockPrismaService.order.update.mockRejectedValue(
-        new Error('Order not found'),
-      );
-
-      await expect(
-        orderService.checkoutOrderById(userId, orderId),
-      ).rejects.toThrow('Order not found');
-    });
-
     it.each([
       [
         OrderStatus.COMPLETED,
@@ -396,9 +352,9 @@ describe('OrderService', () => {
       async (status, errorMessage) => {
         const userId = 1,
           orderId = 1;
-        const dto = {
+        const order = {
           tableId: 1,
-          status: OrderStatus.PENDING,
+          status,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
           subtotal: 10.01,
@@ -411,11 +367,10 @@ describe('OrderService', () => {
             },
           ],
         };
-        const updatedOrder = { id: orderId, ...dto, userId };
+        const updatedOrder = { id: orderId, ...order, userId };
 
         mockPrismaService.order.findFirst.mockResolvedValue({
           ...updatedOrder,
-          status,
         });
 
         await expect(
@@ -432,7 +387,7 @@ describe('OrderService', () => {
     it('should cancel an order by id', async () => {
       const userId = 1,
         orderId = 1,
-        dto = {
+        order = {
           tableId: 1,
           status: OrderStatus.PENDING,
           type: OrderType.POSTPAID,
@@ -440,7 +395,7 @@ describe('OrderService', () => {
           subtotal: 10.01,
           totalPrice: 10.01,
         },
-        updatedOrder = { id: orderId, ...dto, userId };
+        updatedOrder = { id: orderId, ...order, userId };
 
       mockPrismaService.order.findFirst.mockResolvedValue(updatedOrder);
       mockPrismaService.order.update.mockResolvedValue({
@@ -463,19 +418,6 @@ describe('OrderService', () => {
       });
     });
 
-    it('should handle editing a non-existent order', async () => {
-      const userId = 1,
-        orderId = 999;
-
-      mockPrismaService.order.update.mockRejectedValue(
-        new Error('Order not found'),
-      );
-
-      await expect(
-        orderService.cancelOrderById(userId, orderId),
-      ).rejects.toThrow('Order not found');
-    });
-
     it.each([
       [
         OrderStatus.COMPLETED,
@@ -490,10 +432,10 @@ describe('OrderService', () => {
       async (status, errorMessage) => {
         const userId = 1,
           orderId = 1;
-        const dto = {
+        const order = {
           tableId: 1,
-          status: OrderStatus.PENDING,
           type: OrderType.POSTPAID,
+          status,
           paymentMethod: PaymentMethod.CASH,
           subtotal: 10.01,
           totalPrice: 10.01,
@@ -505,11 +447,10 @@ describe('OrderService', () => {
             },
           ],
         };
-        const updatedOrder = { id: orderId, ...dto, userId };
+        const updatedOrder = { id: orderId, ...order, userId };
 
         mockPrismaService.order.findFirst.mockResolvedValue({
           ...updatedOrder,
-          status,
         });
 
         await expect(

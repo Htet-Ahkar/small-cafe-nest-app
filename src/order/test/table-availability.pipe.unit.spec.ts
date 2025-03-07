@@ -20,7 +20,6 @@ const mockPrismaService = {
 
 const mockValue = {
   tableId: 1,
-  status: OrderStatus.PENDING,
   type: OrderType.POSTPAID,
   paymentMethod: PaymentMethod.CASH,
   subtotal: 10,

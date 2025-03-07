@@ -25,32 +25,6 @@ export class OrderService {
     };
   };
 
-  // duplicateOrderItemHelperFn(items: OrderItems) {
-  //   const findDuplicateOrderItems = (items: OrderItems) =>
-  //     items
-  //       .map((item) => item.productId)
-  //       .reduce(
-  //         ({ seen, duplicates }, id) => ({
-  //           duplicates: seen.has(id) ? [...duplicates, id] : duplicates,
-  //           seen: seen.has(id) ? seen : seen.add(id), // normally it does not need to be like this but somehow new Set() doesn't work
-  //         }),
-  //         { seen: new Set(), duplicates: [] },
-  //       ).duplicates;
-
-  //   const duplicates = findDuplicateOrderItems(items);
-
-  //   const checkDuplicateOrderItem = () => {
-  //     if (duplicates.length > 0) {
-  //       throw new ForbiddenException('Duplicate order items found');
-  //     }
-  //   };
-
-  //   return {
-  //     getDuplicates: () => duplicates,
-  //     check: checkDuplicateOrderItem,
-  //   };
-  // }
-
   onCategorizeItems({
     orderItems,
     dbOrderItems,
@@ -90,12 +64,6 @@ export class OrderService {
   }
 
   async createOrder(userId: number, dto: CreateOrderDto) {
-    // * can move logic into a pipe
-    // const duplicateItemsHelper = this.duplicateOrderItemHelperFn(
-    //   dto.orderItems,
-    // );
-    // duplicateItemsHelper.check();
-
     const orderData = {
       ...dto,
       userId,
@@ -140,9 +108,6 @@ export class OrderService {
     const { orderItems, ...orderData } = dto;
 
     const orderHelper = await this.orderHelperFn(userId, orderId);
-    // * can move logic into a pipe
-    // const duplicateItemsHelper = this.duplicateOrderItemHelperFn(orderItems);
-    // duplicateItemsHelper.check();
 
     if (!orderHelper.valid()) {
       throw new ForbiddenException(
