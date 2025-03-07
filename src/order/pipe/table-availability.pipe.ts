@@ -23,6 +23,8 @@ export class TableAvailabilityPipe implements PipeTransform {
     value: CreateOrderDto | EditOrderDto,
     metadata: ArgumentMetadata,
   ) {
+    const orderId = this.request.params['id'];
+
     const { tableId } = value;
     const table = await this.prismaService.table.findFirst({
       where: { id: tableId },
@@ -40,7 +42,7 @@ export class TableAvailabilityPipe implements PipeTransform {
     } else if (this.request.method === 'PATCH') {
       // Get the last order associated with this table
       const lastOrder = await this.prismaService.order.findFirst({
-        where: { tableId },
+        where: { id: Number(orderId) },
         orderBy: { updatedAt: 'desc' },
       });
 

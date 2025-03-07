@@ -5,9 +5,16 @@ import * as pactum from 'pactum';
 import { AuthDto } from 'src/auth/dto';
 import { EditUserDto } from 'src/user/dto';
 import { CreateCategoryDto, EditCategoryDto } from 'src/category/dto';
-import { ProductType, TableStatus, UnitType } from '@prisma/client';
+import {
+  OrderType,
+  PaymentMethod,
+  ProductType,
+  TableStatus,
+  UnitType,
+} from '@prisma/client';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTableDto, EditTableDto } from 'src/table/dto';
+import { CreateOrderDto, EditOrderDto } from 'src/order/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -17,34 +24,6 @@ describe('App e2e', () => {
   const token_userAt = `Bearer $S{${userAt}}`;
 
   const userName = 'user';
-
-  // Clean up helper function
-  enum Model {
-    CATEGORY = 'CATEGORY',
-    PRODUCT = 'PRODUCT',
-    TABLE = 'TABLE',
-  }
-
-  const cleanUp = (models: Model[]) => {
-    models.forEach(async (model) => {
-      switch (model) {
-        case Model.CATEGORY:
-          await prismaService.category.deleteMany();
-          break;
-
-        case Model.PRODUCT:
-          await prismaService.product.deleteMany();
-          break;
-
-        case Model.TABLE:
-          await prismaService.table.deleteMany();
-          break;
-
-        default:
-          break;
-      }
-    });
-  };
 
   // Starting Logic
   beforeAll(async () => {
@@ -320,7 +299,7 @@ describe('App e2e', () => {
     });
 
     afterAll(async () => {
-      cleanUp([Model.CATEGORY]);
+      prismaService.$transaction([prismaService.category.deleteMany()]);
     });
   });
 
@@ -569,7 +548,10 @@ describe('App e2e', () => {
     });
 
     afterAll(async () => {
-      cleanUp([Model.CATEGORY, Model.PRODUCT]);
+      prismaService.$transaction([
+        prismaService.category.deleteMany(),
+        prismaService.product.deleteMany(),
+      ]);
     });
   });
 
@@ -683,7 +665,11 @@ describe('App e2e', () => {
     });
 
     afterAll(async () => {
-      cleanUp([Model.TABLE]);
+      prismaService.$transaction([
+        prismaService.category.deleteMany(),
+        prismaService.product.deleteMany(),
+        prismaService.table.deleteMany(),
+      ]);
     });
   });
 
@@ -692,7 +678,127 @@ describe('App e2e', () => {
     const localRoute = '/order';
     const orderId = 'orderId';
 
-    // beforeAll(async () => {});
+    let product_id_coffee: number;
+    let product_id_breakfast_set: number;
+
+    let table_id_a: number; // init value available
+    let table_id_b: number; // init value occupied
+    let table_id_c: number; // init value reserved
+
+    beforeAll(async () => {
+      const categoryRoute = '/category',
+        productRoute = '/product',
+        tableRoute = '/table';
+
+      const categoryId_drink = 'categoryId_drink';
+      const categoryId_breakfast = 'categoryId_breakfast';
+
+      const productId_coffee = 'productId_coffee';
+      const productId_breakfastSet = 'productId_breakfastSet';
+
+      const tableAId = 'tableAId'; // available
+      const tableBId = 'tableBId'; // occupied
+      const tableCId = 'tableCId'; // reserved
+
+      // category create
+      const drinkCategoryResponse = await pactum
+          .spec()
+          .post(categoryRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            name: 'Drink',
+            type: 'drink',
+          })
+          .stores(categoryId_drink, 'id')
+          .expectStatus(HttpStatus.CREATED),
+        breakfastCategoryResponse = await pactum
+          .spec()
+          .post(categoryRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            name: 'breakfast',
+            type: 'set',
+          })
+          .stores(categoryId_breakfast, 'id')
+          .expectStatus(HttpStatus.CREATED),
+        // product create
+        coffeeProductResponse = await pactum
+          .spec()
+          .post(productRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            categoryId: `$S{${categoryId_drink}}`,
+            name: 'Coffee',
+            unit: UnitType.CUP,
+            price: 5,
+            trackStock: false,
+            stock: 20,
+            bundleItems: '[]',
+            type: ProductType.BUNDLE_ITEM,
+          })
+          .stores(productId_coffee, 'id')
+          .expectStatus(HttpStatus.CREATED),
+        bundleItems = [
+          {
+            productId: Number(pactum.stash.getDataStore(productId_coffee)),
+            quantity: 1,
+          },
+        ],
+        breakfastSetProductResponse = await pactum
+          .spec()
+          .post(productRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            categoryId: `$S{${categoryId_breakfast}}`,
+            name: 'Breakfast set',
+            unit: UnitType.SET,
+            price: 5,
+            trackStock: false,
+            stock: 20,
+            bundleItems: JSON.stringify(bundleItems),
+            type: ProductType.BUNDLE,
+          })
+          .stores(productId_breakfastSet, 'id')
+          .expectStatus(HttpStatus.CREATED),
+        // table create
+        tableAResponse = await pactum
+          .spec()
+          .post(tableRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            name: 'Table A',
+            status: TableStatus.AVAILABLE,
+          })
+          .expectStatus(HttpStatus.CREATED)
+          .stores(tableAId, 'id'),
+        tableBResponse = await pactum
+          .spec()
+          .post(tableRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            name: 'Table B',
+            status: TableStatus.OCCUPIED,
+          })
+          .expectStatus(HttpStatus.CREATED)
+          .stores(tableBId, 'id'),
+        tableCResponse = await pactum
+          .spec()
+          .post(tableRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            name: 'Table C',
+            status: TableStatus.RESERVED,
+          })
+          .expectStatus(HttpStatus.CREATED)
+          .stores(tableCId, 'id');
+
+      product_id_coffee = coffeeProductResponse.body.id;
+      product_id_breakfast_set = breakfastSetProductResponse.body.id;
+
+      table_id_a = tableAResponse.body.id;
+      table_id_b = tableBResponse.body.id;
+      table_id_c = tableCResponse.body.id;
+    });
 
     describe('Get empty order', () => {
       it('should get empty order', () => {
@@ -706,207 +812,503 @@ describe('App e2e', () => {
     });
 
     describe('Create order', () => {
-      const categoryId_drink = 'categoryId_drink';
-      const categoryId_breakfast = 'categoryId_breakfast';
+      describe('Edge cases with tables', () => {
+        it('should handle order if table is not found', () => {
+          const createDto: CreateOrderDto = {
+            tableId: 99,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+          };
 
-      const productId_coffee = 'productId_coffee';
-      const productId_breakfastSet = 'productId_breakfastSet';
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody(createDto)
+            .expectStatus(HttpStatus.NOT_FOUND);
+        });
 
-      const tableAId = 'tableAId';
-      const tableBId = 'tableBId';
-      const tableCId = 'tableCId';
+        it('should handle order if table is not available', () => {
+          const createDto: CreateOrderDto = {
+            tableId: table_id_b,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+          };
 
-      beforeAll(async () => {
-        const categoryRoute = '/category',
-          productRoute = '/product',
-          tableRoute = '/table';
-
-        // category create
-        const drinkCategoryResponse = await pactum
+          return pactum
             .spec()
-            .post(categoryRoute)
+            .post(localRoute)
             .withHeaders({ Authorization: token_userAt })
-            .withBody({
-              name: 'Drink',
-              type: 'drink',
-            })
-            .stores(categoryId_drink, 'id')
-            .expectStatus(HttpStatus.CREATED),
-          breakfastCategoryResponse = await pactum
-            .spec()
-            .post(categoryRoute)
-            .withHeaders({ Authorization: token_userAt })
-            .withBody({
-              name: 'breakfast',
-              type: 'set',
-            })
-            .stores(categoryId_breakfast, 'id')
-            .expectStatus(HttpStatus.CREATED),
-          // product create
-          coffeeProductResponse = await pactum
-            .spec()
-            .post(productRoute)
-            .withHeaders({ Authorization: token_userAt })
-            .withBody({
-              categoryId: `$S{${categoryId_drink}}`,
-              name: 'Coffee',
-              unit: UnitType.CUP,
-              price: 5,
-              trackStock: false,
-              stock: 20,
-              bundleItems: '[]',
-              type: ProductType.BUNDLE_ITEM,
-            })
-            .stores(productId_coffee, 'id')
-            .expectStatus(HttpStatus.CREATED),
-          bundleItems = [
-            {
-              productId: Number(pactum.stash.getDataStore(productId_coffee)),
-              quantity: 1,
-            },
-          ],
-          breakfastSetProductResponse = await pactum
-            .spec()
-            .post(productRoute)
-            .withHeaders({ Authorization: token_userAt })
-            .withBody({
-              categoryId: `$S{${categoryId_breakfast}}`,
-              name: 'Breakfast set',
-              unit: UnitType.SET,
-              price: 5,
-              trackStock: false,
-              stock: 20,
-              bundleItems: JSON.stringify(bundleItems),
-              type: ProductType.BUNDLE,
-            })
-            .stores(productId_breakfastSet, 'id')
-            .expectStatus(HttpStatus.CREATED),
-          // table create
-          tableAResponse = await pactum
-            .spec()
-            .post(tableRoute)
-            .withHeaders({ Authorization: token_userAt })
-            .withBody({
-              name: 'Table A',
-              status: TableStatus.AVAILABLE,
-            })
-            .expectStatus(HttpStatus.CREATED)
-            .stores(tableAId, 'id'),
-          tableBResponse = await pactum
-            .spec()
-            .post(tableRoute)
-            .withHeaders({ Authorization: token_userAt })
-            .withBody({
-              name: 'Table B',
-              status: TableStatus.OCCUPIED,
-            })
-            .expectStatus(HttpStatus.CREATED)
-            .stores(tableBId, 'id'),
-          tableCResponse = await pactum
-            .spec()
-            .post(tableRoute)
-            .withHeaders({ Authorization: token_userAt })
-            .withBody({
-              name: 'Table C',
-              status: TableStatus.RESERVED,
-            })
-            .expectStatus(HttpStatus.CREATED)
-            .stores(tableCId, 'id');
+            .withBody(createDto)
+            .expectStatus(HttpStatus.CONFLICT);
+        });
       });
 
-      // const createDto: CreateCategoryDto = {
-      //   name: 'Category Name',
-      //   type: 'Category Type',
-      //   // description: 'Category Description',
-      // };
+      describe('Edge cases with order items', () => {
+        it('should handle order if order item is not found', () => {
+          const createDto: CreateOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: 999,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+          };
 
-      // it('should create category', () => {
-      //   return pactum
-      //     .spec()
-      //     .post(localRoute)
-      //     .withHeaders({ Authorization: token_userAt })
-      //     .withBody(createDto)
-      //     .expectStatus(HttpStatus.CREATED)
-      //     .stores(orderId, 'id');
-      // });
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody(createDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle order if duplicate order item is found', () => {
+          const createDto: CreateOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+          };
+
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody(createDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle order if order item price do not match', () => {
+          const createDto: CreateOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 10,
+              },
+            ],
+          };
+
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody(createDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+      });
+
+      it('should create order', () => {
+        const createDto: CreateOrderDto = {
+          tableId: table_id_a,
+          type: OrderType.POSTPAID,
+          paymentMethod: PaymentMethod.CASH,
+          subtotal: 10.01, // price aren't match
+          totalPrice: 10.01, // price aren't match
+          orderItems: [
+            {
+              productId: product_id_coffee,
+              quantity: 1,
+              price: 5,
+            },
+            {
+              productId: product_id_breakfast_set,
+              quantity: 1,
+              price: 5,
+            },
+          ],
+        };
+
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto)
+          .expectStatus(HttpStatus.CREATED)
+          .stores(orderId, 'id');
+      });
+
+      describe('Check table status', () => {
+        it('after order is created, table status should change to OCCUPIED', () => {
+          return pactum
+            .spec()
+            .get('/table')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', table_id_a)
+            .expectStatus(HttpStatus.OK)
+            .expectBodyContains(TableStatus.OCCUPIED);
+        });
+      });
+
+      it('should handle order if orderItems is empty', () => {
+        const createDto: CreateOrderDto = {
+          tableId: table_id_a,
+          type: OrderType.POSTPAID,
+          paymentMethod: PaymentMethod.CASH,
+          subtotal: 10.01, // price aren't match
+          totalPrice: 10.01, // price aren't match
+          orderItems: [],
+        };
+
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto)
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
     });
 
-    // describe('Get categories', () => {
-    //   it('should get categories', () => {
-    //     return pactum
-    //       .spec()
-    //       .get(localRoute)
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .expectStatus(HttpStatus.OK)
-    //       .expectJsonLength(1);
-    //   });
-    // });
+    describe('Get orders', () => {
+      it('should get orders', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLength(1);
+      });
+    });
 
-    // describe('Get category by id', () => {
-    //   it('should get category by id', () => {
-    //     return pactum
-    //       .spec()
-    //       .get(localRoute)
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .withPathParams('id', `$S{${orderId}}`)
-    //       .expectStatus(HttpStatus.OK)
-    //       .expectBodyContains(`$S{${orderId}}`);
-    //   });
-    // });
+    describe('Get order by id', () => {
+      it('should get order by id', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${orderId}}`)
+          .expectStatus(HttpStatus.OK)
+          .expectBodyContains(`$S{${orderId}}`);
+      });
+    });
 
-    // describe('Edit category', () => {
-    //   const editDto: EditCategoryDto = {
-    //     name: 'Edited Name',
-    //     description: 'Category Description',
-    //   };
+    describe('Edit order', () => {
+      describe('Edge cases with tables', () => {
+        it('should handle order if table is not found', () => {
+          const editDto: EditOrderDto = {
+            tableId: 99,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
 
-    //   it('should edit category by id', () => {
-    //     return pactum
-    //       .spec()
-    //       .patch(localRoute + '/{id}')
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .withPathParams('id', `$S{${orderId}}`)
-    //       .withBody(editDto)
-    //       .expectStatus(HttpStatus.OK)
-    //       .expectBodyContains(editDto.description);
-    //   });
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.NOT_FOUND);
+        });
 
-    //   it('should fail edit category by id', () => {
-    //     return pactum
-    //       .spec()
-    //       .patch(localRoute + '/{id}')
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .withPathParams('id', `$S{${orderId}}`)
-    //       .withBody({
-    //         ...editDto,
-    //         name: '',
-    //       })
-    //       .expectStatus(HttpStatus.BAD_REQUEST);
-    //   });
-    // });
+        it('should handle order if table is not available', () => {
+          const editDto: EditOrderDto = {
+            tableId: table_id_b,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
 
-    // describe('Delete category by id', () => {
-    //   it('should delete category by id', () => {
-    //     return pactum
-    //       .spec()
-    //       .delete(localRoute + '/{id}')
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .withPathParams('id', `$S{${orderId}}`)
-    //       .expectStatus(HttpStatus.NO_CONTENT);
-    //   });
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.CONFLICT);
+        });
+      });
 
-    //   it('should get empty category', () => {
-    //     return pactum
-    //       .spec()
-    //       .get(localRoute)
-    //       .withHeaders({ Authorization: token_userAt })
-    //       .expectStatus(HttpStatus.OK)
-    //       .expectJsonLength(0);
-    //   });
-    // });
+      describe('Edge cases with order items', () => {
+        it('should handle order if order item is not found', () => {
+          const editDto: EditOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: 999,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
+
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle order if duplicate order item is found', () => {
+          const editDto: EditOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
+
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle order if order item price do not match', () => {
+          const editDto: EditOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 10,
+              },
+            ],
+          };
+
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+      });
+
+      it('should edit order by id', () => {
+        const editDto: EditOrderDto = {
+          tableId: table_id_a,
+          type: OrderType.POSTPAID,
+          paymentMethod: PaymentMethod.CASH,
+          subtotal: 10.01, // price aren't match
+          totalPrice: 10.01, // price aren't match
+          orderItems: [
+            {
+              productId: product_id_coffee,
+              quantity: 1,
+              price: 5,
+            },
+            {
+              productId: product_id_breakfast_set,
+              quantity: 1,
+              price: 5,
+            },
+          ],
+          description: 'edit',
+        };
+
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${orderId}}`)
+          .withBody(editDto)
+          .expectStatus(HttpStatus.OK)
+          .expectBodyContains(editDto.description);
+      });
+
+      describe('Move table', () => {
+        it('should move if table is available', () => {
+          const editDto: EditOrderDto = {
+            tableId: table_id_c,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            subtotal: 10.01, // price aren't match
+            totalPrice: 10.01, // price aren't match
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
+
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.OK)
+            .expectBodyContains(editDto.tableId);
+        });
+
+        it('after move old table status change to AVAILABLE', () => {
+          return pactum
+            .spec()
+            .get('/table')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', table_id_a)
+            .expectStatus(HttpStatus.OK)
+            .expectBodyContains(TableStatus.AVAILABLE);
+        });
+
+        it('after move new table status change to OCCUPIED', () => {
+          return pactum
+            .spec()
+            .get('/table')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', table_id_c)
+            .expectStatus(HttpStatus.OK)
+            .expectBodyContains(TableStatus.OCCUPIED);
+        });
+      });
+    });
+
+    describe('Delete order by id', () => {
+      it('should delete category by id', () => {
+        return pactum
+          .spec()
+          .delete(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${orderId}}`)
+          .expectStatus(HttpStatus.NO_CONTENT);
+      });
+
+      it('should get empty order', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLength(0);
+      });
+    });
 
     afterAll(async () => {
-      cleanUp([Model.CATEGORY]);
+      prismaService.$transaction([
+        prismaService.category.deleteMany(),
+        prismaService.product.deleteMany(),
+        prismaService.table.deleteMany(),
+        prismaService.order.deleteMany(),
+        prismaService.orderItem.deleteMany(),
+      ]);
     });
   });
 });

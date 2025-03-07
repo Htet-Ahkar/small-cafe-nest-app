@@ -1,7 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { OrderService } from '../order.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { OrderStatus, OrderType, PaymentMethod } from '@prisma/client';
+import {
+  OrderStatus,
+  OrderType,
+  PaymentMethod,
+  TableStatus,
+} from '@prisma/client';
 import { ForbiddenException } from '@nestjs/common';
 import { CreateOrderDto, EditOrderDto } from '../dto';
 
@@ -19,6 +24,9 @@ const mockPrismaService = {
     createMany: jest.fn(),
     update: jest.fn(),
     deleteMany: jest.fn(),
+  },
+  table: {
+    update: jest.fn(),
   },
 };
 
@@ -113,12 +121,14 @@ describe('OrderService', () => {
           ],
         };
 
+      const { orderItems, ...dtoData } = dto;
+
       const createdOrder = { ...dto, userId };
       const orderData = {
-        ...dto,
+        ...dtoData,
         userId,
-        orderItems: {
-          create: dto.orderItems.map((item) => ({
+        OrderItems: {
+          create: orderItems.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,
@@ -131,6 +141,9 @@ describe('OrderService', () => {
         return callback(mockPrismaService);
       });
       mockPrismaService.order.create.mockResolvedValue(createdOrder);
+      mockPrismaService.table.update.mockResolvedValue({
+        status: TableStatus.OCCUPIED,
+      });
 
       expect(await orderService.createOrder(userId, dto)).toEqual(createdOrder);
       expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(1);
@@ -140,10 +153,12 @@ describe('OrderService', () => {
     });
   });
 
+  // todo: need to modify. can't test all prismaService
   // Edit
   describe('Edit order by id', () => {
     it('should successfully edit an order and update order items', async () => {
       // Arrange (Mock Data)
+      const oldTableId = 1;
       const userId = 1,
         orderId = 1,
         dto: EditOrderDto = {
@@ -183,6 +198,9 @@ describe('OrderService', () => {
       });
 
       // Mock the behavior of $transaction
+      mockPrismaService.order.findFirst.mockResolvedValue({
+        tableId: oldTableId,
+      });
       mockPrismaService.$transaction.mockImplementation(async (callback) => {
         return callback(mockPrismaService);
       });
@@ -201,7 +219,6 @@ describe('OrderService', () => {
 
       // Assert
       expect(mockPrismaService.$transaction).toHaveBeenCalledTimes(1);
-
       expect(mockPrismaService.order.update).toHaveBeenCalledWith({
         where: { userId, id: orderId },
         data: orderData,

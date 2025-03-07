@@ -19,6 +19,9 @@ export class PrismaService extends PrismaClient {
       this.user.deleteMany(),
       this.category.deleteMany(),
       this.product.deleteMany(),
+      this.table.deleteMany(),
+      this.order.deleteMany(),
+      this.orderItem.deleteMany(),
     ]);
   }
 }

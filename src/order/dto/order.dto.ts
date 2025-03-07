@@ -31,7 +31,8 @@ export class BaseOrderDto {
   @ArrayNotEmpty()
   orderItems: OrderItem[];
 
-  //* I think I need to remove price to remove furthur confusion
+  //* I think I need to remove price to remove furthur confusion. If price don't incl
+
   @IsNumber()
   @IsNotEmpty()
   subtotal: number;

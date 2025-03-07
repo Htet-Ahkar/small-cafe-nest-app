@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateOrderDto, EditOrderDto } from './dto';
-import { OrderStatus } from '@prisma/client';
+import { OrderStatus, TableStatus } from '@prisma/client';
 
 type OrderItems = CreateOrderDto['orderItems'] | EditOrderDto['orderItems'];
 type DbOrderItem = OrderItems[number] & { id: number };
@@ -64,10 +64,11 @@ export class OrderService {
   }
 
   async createOrder(userId: number, dto: CreateOrderDto) {
+    const { orderItems, ...dtoData } = dto;
     const orderData = {
-      ...dto,
+      ...dtoData,
       userId,
-      orderItems: {
+      OrderItems: {
         create: dto.orderItems.map((item) => ({
           productId: item.productId,
           quantity: item.quantity,
@@ -76,10 +77,25 @@ export class OrderService {
       },
     };
 
+    // helper function
+    const afterOrderCreate = async () => {
+      await this.prismaService.table.update({
+        where: {
+          userId,
+          id: orderData.tableId,
+        },
+        data: {
+          status: TableStatus.OCCUPIED,
+        },
+      });
+    };
+
     return await this.prismaService.$transaction(async (prisma) => {
       const order = await prisma.order.create({
         data: { ...orderData },
       });
+
+      await afterOrderCreate();
 
       return order;
     });
@@ -122,6 +138,45 @@ export class OrderService {
     const { itemsToCreate, itemsToUpdate, itemsToDelete } =
       this.onCategorizeItems({ orderItems, dbOrderItems }).getItems();
 
+    const oldOrder = await this.prismaService.order.findFirst({
+      where: { id: orderId },
+    });
+    const { tableId: oldTableId } = oldOrder;
+    const { tableId: newTableId } = orderData;
+
+    // helper function
+    const afterOrderEdit = async ({
+      oldTableId,
+      newTableId,
+    }: {
+      oldTableId: number;
+      newTableId: number;
+    }) => {
+      if (oldTableId !== newTableId) {
+        // old table
+        await this.prismaService.table.update({
+          where: {
+            userId,
+            id: oldTableId,
+          },
+          data: {
+            status: TableStatus.AVAILABLE,
+          },
+        });
+
+        // new table
+        await this.prismaService.table.update({
+          where: {
+            userId,
+            id: newTableId,
+          },
+          data: {
+            status: TableStatus.OCCUPIED,
+          },
+        });
+      }
+    };
+
     return await this.prismaService.$transaction(async (prisma) => {
       // Update order details
       const updatedOrder = await prisma.order.update({
@@ -154,6 +209,8 @@ export class OrderService {
           },
         });
       }
+
+      await afterOrderEdit({ oldTableId, newTableId });
 
       return updatedOrder;
     });

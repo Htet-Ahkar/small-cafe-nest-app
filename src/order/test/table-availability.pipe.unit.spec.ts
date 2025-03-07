@@ -36,10 +36,14 @@ const mockValue = {
 describe('TableAvailabilityPipe', () => {
   let pipe: TableAvailabilityPipe;
   let prismaService: PrismaService;
-  let requestMock: { method: 'POST' | 'PATCH' };
+  let requestMock: any;
+  const orderId = 1;
 
   beforeEach(async () => {
-    requestMock = { method: 'POST' }; // Default to POST
+    requestMock = {
+      method: 'POST',
+      params: { id: `${orderId}` },
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -152,6 +156,10 @@ describe('TableAvailabilityPipe', () => {
         {} as any,
       ),
     ).rejects.toThrow(NotFoundException);
+    expect(mockPrismaService.order.findFirst).toHaveBeenCalledWith({
+      where: { id: orderId },
+      orderBy: { updatedAt: 'desc' },
+    });
   });
 
   it('should throw ConflictException if moving to an occupied table on PATCH', async () => {
@@ -166,6 +174,10 @@ describe('TableAvailabilityPipe', () => {
     await expect(pipe.transform({ ...mockValue }, {} as any)).rejects.toThrow(
       ConflictException,
     );
+    expect(mockPrismaService.order.findFirst).toHaveBeenCalledWith({
+      where: { id: orderId },
+      orderBy: { updatedAt: 'desc' },
+    });
   });
 
   it('should pass if editing order is from the same table', async () => {
@@ -188,6 +200,11 @@ describe('TableAvailabilityPipe', () => {
       ),
     ).resolves.toEqual({
       ...mockValue,
+    });
+
+    expect(mockPrismaService.order.findFirst).toHaveBeenCalledWith({
+      where: { id: orderId },
+      orderBy: { updatedAt: 'desc' },
     });
   });
 });
