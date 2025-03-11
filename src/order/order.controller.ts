@@ -15,7 +15,11 @@ import { OrderService } from './order.service';
 import { JwtGuard } from 'src/auth/guard';
 import { GetUser } from 'src/auth/decorator';
 import { CreateOrderDto, EditOrderDto } from './dto';
-import { OrderItemValidPipe, TableAvailabilityPipe } from './pipe';
+import {
+  OrderItemValidPipe,
+  TableAvailabilityPipe,
+  TaxValidPipe,
+} from './pipe';
 
 @UseGuards(JwtGuard)
 @Controller('order')
@@ -26,7 +30,8 @@ export class OrderController {
   @Post()
   createOrder(
     @GetUser('id') userId: number,
-    @Body(TableAvailabilityPipe, OrderItemValidPipe) dto: CreateOrderDto,
+    @Body(TableAvailabilityPipe, OrderItemValidPipe, TaxValidPipe)
+    dto: CreateOrderDto,
   ) {
     return this.orderService.createOrder(userId, dto);
   }
@@ -51,7 +56,8 @@ export class OrderController {
   editOrderById(
     @GetUser('id') userId: number,
     @Param('id', ParseIntPipe) orderId: number,
-    @Body(TableAvailabilityPipe, OrderItemValidPipe) dto: EditOrderDto,
+    @Body(TableAvailabilityPipe, OrderItemValidPipe, TaxValidPipe)
+    dto: EditOrderDto,
   ) {
     return this.orderService.editOrderById(userId, orderId, dto);
   }
