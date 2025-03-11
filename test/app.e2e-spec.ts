@@ -15,6 +15,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTableDto, EditTableDto } from 'src/table/dto';
 import { CreateOrderDto, EditOrderDto } from 'src/order/dto';
+import { CreateTaxDto, EditTaxDto } from 'src/tax/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -552,6 +553,124 @@ describe('App e2e', () => {
         prismaService.category.deleteMany(),
         prismaService.product.deleteMany(),
       ]);
+    });
+  });
+
+  // tax test
+  describe('Tax', () => {
+    const localRoute = '/tax';
+    const taxId = 'taxId';
+
+    describe('Get empty tax', () => {
+      it('should get empty tax', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectBody([]);
+      });
+    });
+
+    describe('Create tax', () => {
+      const createDto: CreateTaxDto = {
+        name: 'New Tax',
+        rate: 7,
+        isFixed: false,
+        isInclusive: false,
+        // description: 'Tax Description',
+      };
+
+      it('should create tax', () => {
+        return pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody(createDto)
+          .expectStatus(HttpStatus.CREATED)
+          .stores(taxId, 'id');
+      });
+    });
+
+    describe('Get taxes', () => {
+      it('should get taxes', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLength(1);
+      });
+    });
+
+    describe('Get tax by id', () => {
+      it('should get tax by id', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${taxId}}`)
+          .expectStatus(HttpStatus.OK)
+          .expectBodyContains(`$S{${taxId}}`);
+      });
+    });
+
+    describe('Edit tax', () => {
+      const editDto: EditTaxDto = {
+        name: 'Edit Tax',
+        rate: 7,
+        isFixed: false,
+        isInclusive: false,
+        description: 'Tax Description',
+      };
+
+      it('should edit tax by id', () => {
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${taxId}}`)
+          .withBody(editDto)
+          .expectStatus(HttpStatus.OK)
+          .expectBodyContains(editDto.description);
+      });
+
+      it('should fail edit tax by id', () => {
+        return pactum
+          .spec()
+          .patch(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${taxId}}`)
+          .withBody({
+            ...editDto,
+            name: '',
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+    });
+
+    describe('Delete tax by id', () => {
+      it('should delete tax by id', () => {
+        return pactum
+          .spec()
+          .delete(localRoute + '/{id}')
+          .withHeaders({ Authorization: token_userAt })
+          .withPathParams('id', `$S{${taxId}}`)
+          .expectStatus(HttpStatus.NO_CONTENT);
+      });
+
+      it('should get empty tax', () => {
+        return pactum
+          .spec()
+          .get(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .expectStatus(HttpStatus.OK)
+          .expectJsonLength(0);
+      });
+    });
+
+    afterAll(async () => {
+      prismaService.$transaction([prismaService.tax.deleteMany()]);
     });
   });
 

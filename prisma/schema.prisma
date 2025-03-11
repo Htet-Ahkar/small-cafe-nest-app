@@ -37,6 +37,7 @@ model User {
   products   Product[]
   Table      Table[]
   Order      Order[]
+  Tax        Tax[]
 
   @@map("users")
 }
@@ -133,7 +134,8 @@ model Order {
   paymentMethod PaymentMethod @default(CASH)
   subtotal      Float // Before taxes and discounts
   // discount      Float? // Discount amount 
-  // tax           Float? // Tax amount
+  taxIds        Int[]
+  rounding      Float         @default(0.00)
   totalPrice    Float // Final price after tax and discount
   description   String?
   completedAt   DateTime?
@@ -145,6 +147,7 @@ model Order {
   user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   OrderItems OrderItem[]
+  OrderTaxes OrderTax[]
 
   @@map("orders")
 }
@@ -182,4 +185,36 @@ model OrderItem {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   @@map("orderItems")
+}
+
+model Tax {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name        String
+  rate        Float
+  isFixed     Boolean @default(false) // True if tax rate is fixed number 
+  isInclusive Boolean @default(false) // True if price includes tax
+  description String?
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  OrderTaxes OrderTax[]
+}
+
+model OrderTax {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderId Int
+  taxId   Int
+  amount  Float // Computed tax amount for this order
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tax   Tax   @relation(fields: [taxId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, taxId]) // Ensures an order doesn't have duplicate tax types
 }

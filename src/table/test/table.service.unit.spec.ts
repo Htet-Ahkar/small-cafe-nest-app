@@ -48,7 +48,7 @@ describe('TableService', () => {
           userId,
         },
       ];
-      (prismaService.table.findMany as jest.Mock).mockResolvedValue(tables);
+      mockPrismaService.table.findMany.mockResolvedValue(tables);
 
       expect(await tableService.getTables(userId)).toEqual(tables);
       expect(prismaService.table.findMany).toHaveBeenCalledWith({
@@ -58,7 +58,7 @@ describe('TableService', () => {
 
     it('should return an empty array if no tables exist', async () => {
       const userId = 1;
-      (prismaService.table.findMany as jest.Mock).mockResolvedValue([]);
+      mockPrismaService.table.findMany.mockResolvedValue([]);
 
       expect(await tableService.getTables(userId)).toEqual([]);
     });
@@ -75,7 +75,7 @@ describe('TableService', () => {
         status: TableStatus.AVAILABLE,
         userId,
       };
-      (prismaService.table.findFirst as jest.Mock).mockResolvedValue(table);
+      mockPrismaService.table.findFirst.mockResolvedValue(table);
 
       expect(await tableService.getTableById(userId, tableId)).toEqual(table);
       expect(prismaService.table.findFirst).toHaveBeenCalledWith({
@@ -86,7 +86,7 @@ describe('TableService', () => {
     it('should return null if table does not exist', async () => {
       const userId = 1,
         tableId = 999;
-      (prismaService.table.findFirst as jest.Mock).mockResolvedValue(null);
+      mockPrismaService.table.findFirst.mockResolvedValue(null);
 
       expect(await tableService.getTableById(userId, tableId)).toBeNull();
     });
@@ -97,14 +97,10 @@ describe('TableService', () => {
     it('should create a table', async () => {
       const userId = 1;
       const dto = { name: 'New Table', status: TableStatus.AVAILABLE };
-      const createdCategory = { id: 1, ...dto, userId };
-      (prismaService.table.create as jest.Mock).mockResolvedValue(
-        createdCategory,
-      );
+      const createdTable = { id: 1, ...dto, userId };
+      mockPrismaService.table.create.mockResolvedValue(createdTable);
 
-      expect(await tableService.createTable(userId, dto)).toEqual(
-        createdCategory,
-      );
+      expect(await tableService.createTable(userId, dto)).toEqual(createdTable);
       expect(prismaService.table.create).toHaveBeenCalledWith({
         data: { userId, ...dto },
       });
@@ -114,7 +110,7 @@ describe('TableService', () => {
       const userId = 1;
       const dto = { name: '', status: TableStatus.AVAILABLE };
 
-      (prismaService.table.create as jest.Mock).mockRejectedValue(
+      mockPrismaService.table.create.mockRejectedValue(
         new Error('Invalid data'),
       );
 
@@ -131,7 +127,7 @@ describe('TableService', () => {
         tableId = 1;
       const dto = { name: 'update Table', status: TableStatus.AVAILABLE };
       const updatedTable = { id: tableId, ...dto, userId };
-      (prismaService.table.update as jest.Mock).mockResolvedValue(updatedTable);
+      mockPrismaService.table.update.mockResolvedValue(updatedTable);
 
       expect(await tableService.editTableById(userId, tableId, dto)).toEqual(
         updatedTable,
@@ -146,13 +142,13 @@ describe('TableService', () => {
       const userId = 1,
         tableId = 999;
       const dto = { name: 'update Table', status: TableStatus.AVAILABLE };
-      (prismaService.table.update as jest.Mock).mockRejectedValue(
-        new Error('Category not found'),
+      mockPrismaService.table.update.mockRejectedValue(
+        new Error('Table not found'),
       );
 
       await expect(
         tableService.editTableById(userId, tableId, dto),
-      ).rejects.toThrow('Category not found');
+      ).rejects.toThrow('Table not found');
     });
   });
 
@@ -166,7 +162,7 @@ describe('TableService', () => {
         name: 'Deleted Table',
         userId,
       };
-      (prismaService.table.delete as jest.Mock).mockResolvedValue(deletedTable);
+      mockPrismaService.table.delete.mockResolvedValue(deletedTable);
 
       expect(await tableService.deleteTableById(userId, tableId)).toEqual(
         deletedTable,
@@ -179,7 +175,7 @@ describe('TableService', () => {
     it('should handle deleting a non-existent table', async () => {
       const userId = 1,
         tableId = 999;
-      (prismaService.table.delete as jest.Mock).mockRejectedValue(
+      mockPrismaService.table.delete.mockRejectedValue(
         new Error('Table not found'),
       );
 
