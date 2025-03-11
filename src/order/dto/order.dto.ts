@@ -11,6 +11,7 @@ import {
   IsOptional,
   IsString,
 } from 'class-validator';
+import { IsUniqueArray } from 'src/custom-validators';
 
 export class BaseOrderDto {
   @IsNumber()
@@ -29,9 +30,17 @@ export class BaseOrderDto {
 
   @IsArray()
   @ArrayNotEmpty()
+  @IsNotEmpty()
   orderItems: OrderItem[];
 
-  //* I think I need to remove price to remove furthur confusion. If price don't incl
+  @IsArray()
+  @IsNotEmpty()
+  @IsUniqueArray({ message: 'taxIds should not contain duplicate values' })
+  taxIds: number[];
+
+  @IsNumber()
+  @IsNotEmpty()
+  rounding: number = 0.0;
 
   @IsNumber()
   @IsNotEmpty()
