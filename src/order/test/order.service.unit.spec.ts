@@ -339,12 +339,13 @@ describe('OrderService', () => {
           totalPrice: 10.01,
         },
         updatedOrder = { id: orderId, ...order, userId };
+      const completedAt = new Date();
 
       mockPrismaService.order.findFirst.mockResolvedValue(updatedOrder);
       mockPrismaService.order.update.mockResolvedValue({
         ...updatedOrder,
         status: OrderStatus.COMPLETED,
-        completedAt: new Date(),
+        completedAt,
       });
 
       expect(await orderService.checkoutOrderById(userId, orderId));
@@ -356,7 +357,7 @@ describe('OrderService', () => {
         data: {
           ...updatedOrder,
           status: OrderStatus.COMPLETED,
-          completedAt: new Date(),
+          completedAt,
         },
       });
     });
@@ -419,12 +420,13 @@ describe('OrderService', () => {
           totalPrice: 10.01,
         },
         updatedOrder = { id: orderId, ...order, userId };
+      const completedAt = new Date();
 
       mockPrismaService.order.findFirst.mockResolvedValue(updatedOrder);
       mockPrismaService.order.update.mockResolvedValue({
         ...updatedOrder,
         status: OrderStatus.CANCELED,
-        completedAt: new Date(),
+        completedAt,
       });
 
       expect(await orderService.cancelOrderById(userId, orderId));
@@ -436,7 +438,7 @@ describe('OrderService', () => {
         data: {
           ...updatedOrder,
           status: OrderStatus.CANCELED,
-          completedAt: new Date(),
+          completedAt,
         },
       });
     });

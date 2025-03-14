@@ -1,4 +1,5 @@
 import {
+  ArrayNotEmpty,
   IsArray,
   IsBoolean,
   IsInt,
@@ -40,6 +41,7 @@ export class CalculateTaxDto {
   totalItemPrice: number;
 
   @IsArray()
+  @ArrayNotEmpty()
   @IsUniqueArray({ message: 'taxIds should not contain duplicate values' })
   @IsNotEmpty()
   taxIds: number[];

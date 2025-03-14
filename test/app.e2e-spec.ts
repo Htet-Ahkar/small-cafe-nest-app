@@ -15,7 +15,7 @@ import {
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateTableDto, EditTableDto } from 'src/table/dto';
 import { CreateOrderDto, EditOrderDto } from 'src/order/dto';
-import { CreateTaxDto, EditTaxDto } from 'src/tax/dto';
+import { CalculateTaxDto, CreateTaxDto, EditTaxDto } from 'src/tax/dto';
 
 describe('App e2e', () => {
   let app: INestApplication;
@@ -615,6 +615,60 @@ describe('App e2e', () => {
       });
     });
 
+    describe('Calculate tax', () => {
+      const localRoute = '/tax/calculate';
+
+      it('should handle empty tax', async () => {
+        const dto: CalculateTaxDto = {
+          totalItemPrice: 10,
+          taxIds: [],
+        };
+
+        return await pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            ...dto,
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+
+      it('should handle duplicate tax', async () => {
+        const tax_id = pactum.stash.getDataStore(taxId);
+
+        const dto: CalculateTaxDto = {
+          totalItemPrice: 10,
+          taxIds: [tax_id, tax_id],
+        };
+
+        return await pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            ...dto,
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+
+      it('should handle tax does not exist', async () => {
+        const dto: CalculateTaxDto = {
+          totalItemPrice: 10,
+          taxIds: [999],
+        };
+
+        return await pactum
+          .spec()
+          .post(localRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            ...dto,
+          })
+          .expectStatus(HttpStatus.BAD_REQUEST);
+      });
+    });
+
     describe('Edit tax', () => {
       const editDto: EditTaxDto = {
         name: 'Edit Tax',
@@ -804,10 +858,41 @@ describe('App e2e', () => {
     let table_id_b: number; // init value occupied
     let table_id_c: number; // init value reserved
 
+    let tax_id_fixed: number; // init value available
+    let tax_id_percentage: number; // init value occupied
+
+    // Hepler function
+    const calculateTaxHelper = async ({
+      totalItemPrice,
+      taxIds,
+    }: CalculateTaxDto) => {
+      const route = '/tax/calculate';
+
+      const {
+        body,
+      }: {
+        body: {
+          after_rounding_tax: number;
+          rounding: number;
+          before_rounding_tax: number;
+        };
+      } = await pactum
+        .spec()
+        .post(route)
+        .withHeaders({ Authorization: token_userAt })
+        .withBody({
+          totalItemPrice,
+          taxIds,
+        });
+
+      return body;
+    };
+
     beforeAll(async () => {
       const categoryRoute = '/category',
         productRoute = '/product',
-        tableRoute = '/table';
+        tableRoute = '/table',
+        taxRoute = '/tax';
 
       const categoryId_drink = 'categoryId_drink';
       const categoryId_breakfast = 'categoryId_breakfast';
@@ -818,6 +903,9 @@ describe('App e2e', () => {
       const tableAId = 'tableAId'; // available
       const tableBId = 'tableBId'; // occupied
       const tableCId = 'tableCId'; // reserved
+
+      const taxIdPercentage = 'taxIdPercentage';
+      const taxIdFixed = 'taxIdFixed';
 
       // category create
       const drinkCategoryResponse = await pactum
@@ -909,7 +997,33 @@ describe('App e2e', () => {
             status: TableStatus.RESERVED,
           })
           .expectStatus(HttpStatus.CREATED)
-          .stores(tableCId, 'id');
+          .stores(tableCId, 'id'),
+        taxFixedResponse = await pactum
+          .spec()
+          .post(taxRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            name: 'fixed tax',
+            rate: 10,
+            isFixed: true,
+            isInclusive: false,
+            // description: 'description',
+          })
+          .expectStatus(HttpStatus.CREATED)
+          .stores(taxIdFixed, 'id'),
+        taxPercentageResponse = await pactum
+          .spec()
+          .post(taxRoute)
+          .withHeaders({ Authorization: token_userAt })
+          .withBody({
+            name: 'percentage tax',
+            rate: 7,
+            isFixed: false,
+            isInclusive: false,
+            // description: 'description',
+          })
+          .expectStatus(HttpStatus.CREATED)
+          .stores(taxIdPercentage, 'id');
 
       product_id_coffee = coffeeProductResponse.body.id;
       product_id_breakfast_set = breakfastSetProductResponse.body.id;
@@ -917,6 +1031,9 @@ describe('App e2e', () => {
       table_id_a = tableAResponse.body.id;
       table_id_b = tableBResponse.body.id;
       table_id_c = tableCResponse.body.id;
+
+      tax_id_fixed = taxFixedResponse.body.id;
+      tax_id_percentage = taxPercentageResponse.body.id;
     });
 
     describe('Get empty order', () => {
@@ -1085,15 +1202,207 @@ describe('App e2e', () => {
         });
       });
 
-      it('should create order', () => {
+      describe('Edge cases with Tax', () => {
+        it('should handle if subtotal wrong', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const dto: CreateOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+            subtotal: 15,
+            totalPrice: after_rounding_tax,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+          };
+
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody(dto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle if total wrong', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const dto: CreateOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+            subtotal,
+            totalPrice: 10,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+          };
+
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody(dto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle if tax wrong', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const dto: CreateOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [tax_id_percentage],
+            subtotal,
+            totalPrice: after_rounding_tax,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+          };
+
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody(dto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle if taxIds duplicate', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const dto: CreateOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [tax_id_percentage, tax_id_percentage],
+            subtotal,
+            totalPrice: after_rounding_tax,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+          };
+
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody(dto)
+            .expectStatus(HttpStatus.BAD_REQUEST);
+        });
+
+        it('should handle if taxIds empty', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const dto: CreateOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [],
+            subtotal,
+            totalPrice: after_rounding_tax,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+          };
+
+          return pactum
+            .spec()
+            .post(localRoute)
+            .withHeaders({ Authorization: token_userAt })
+            .withBody(dto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+      });
+
+      it('should create order', async () => {
         const createDto: CreateOrderDto = {
           tableId: table_id_a,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
-          rounding: 0.5, // !
-          taxIds: [1], // !
-          subtotal: 10.01, // price aren't match
-          totalPrice: 10.01, // price aren't match
+          rounding: 0.3,
+          taxIds: [tax_id_percentage],
+          subtotal: 10,
+          totalPrice: 11,
           orderItems: [
             {
               productId: product_id_coffee,
@@ -1337,15 +1646,15 @@ describe('App e2e', () => {
         });
       });
 
-      it('should edit order by id', () => {
+      it('should edit order by id', async () => {
         const editDto: EditOrderDto = {
           tableId: table_id_a,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
-          rounding: 0.5, // !
-          taxIds: [1], // !
-          subtotal: 10.01, // price aren't match
-          totalPrice: 10.01, // price aren't match
+          rounding: 0.3,
+          taxIds: [tax_id_percentage, tax_id_fixed],
+          subtotal: 10,
+          totalPrice: 21,
           orderItems: [
             {
               productId: product_id_coffee,
@@ -1377,10 +1686,10 @@ describe('App e2e', () => {
             tableId: table_id_c,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
-            rounding: 0.5, // !
-            taxIds: [1], // !
-            subtotal: 10.01, // price aren't match
-            totalPrice: 10.01, // price aren't match
+            rounding: 0.3,
+            taxIds: [tax_id_percentage],
+            subtotal: 10,
+            totalPrice: 11,
             orderItems: [
               {
                 productId: product_id_coffee,
@@ -1426,10 +1735,212 @@ describe('App e2e', () => {
             .expectBodyContains(TableStatus.OCCUPIED);
         });
       });
+
+      describe('Edge cases with Tax', () => {
+        it('should handle if subtotal wrong', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const editDto: EditOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+            subtotal: 15,
+            totalPrice: after_rounding_tax,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
+
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle if total wrong', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const editDto: EditOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+            subtotal,
+            totalPrice: 10,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
+
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle if tax wrong', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const editDto: EditOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [tax_id_percentage],
+            subtotal,
+            totalPrice: after_rounding_tax,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
+
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+
+        it('should handle if taxIds duplicate', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const editDto: EditOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [tax_id_percentage, tax_id_percentage],
+            subtotal,
+            totalPrice: after_rounding_tax,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
+
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.BAD_REQUEST);
+        });
+
+        it('should handle if taxIds empty', async () => {
+          const subtotal = 10; // before tax
+
+          const { after_rounding_tax, rounding } = await calculateTaxHelper({
+            totalItemPrice: subtotal,
+            taxIds: [tax_id_percentage, tax_id_fixed],
+          });
+
+          const editDto: EditOrderDto = {
+            tableId: table_id_a,
+            type: OrderType.POSTPAID,
+            paymentMethod: PaymentMethod.CASH,
+            rounding,
+            taxIds: [],
+            subtotal,
+            totalPrice: after_rounding_tax,
+            orderItems: [
+              {
+                productId: product_id_coffee,
+                quantity: 1,
+                price: 5,
+              },
+              {
+                productId: product_id_breakfast_set,
+                quantity: 1,
+                price: 5,
+              },
+            ],
+            description: 'edit',
+          };
+
+          return pactum
+            .spec()
+            .patch(localRoute + '/{id}')
+            .withHeaders({ Authorization: token_userAt })
+            .withPathParams('id', `$S{${orderId}}`)
+            .withBody(editDto)
+            .expectStatus(HttpStatus.FORBIDDEN);
+        });
+      });
     });
 
     describe('Delete order by id', () => {
-      it('should delete category by id', () => {
+      it('should delete order by id', () => {
         return pactum
           .spec()
           .delete(localRoute + '/{id}')
@@ -1449,13 +1960,14 @@ describe('App e2e', () => {
     });
 
     afterAll(async () => {
-      prismaService.$transaction([
-        prismaService.category.deleteMany(),
-        prismaService.product.deleteMany(),
-        prismaService.table.deleteMany(),
-        prismaService.order.deleteMany(),
-        prismaService.orderItem.deleteMany(),
-      ]);
+      // prismaService.$transaction([
+      //   prismaService.category.deleteMany(),
+      //   prismaService.product.deleteMany(),
+      //   prismaService.table.deleteMany(),
+      //   prismaService.order.deleteMany(),
+      //   prismaService.orderItem.deleteMany(),
+      //   prismaService.tax.deleteMany(),
+      // ]);
     });
   });
 });

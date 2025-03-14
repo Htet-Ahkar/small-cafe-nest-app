@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TaxService } from '../tax.service';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { TaxCalculatorService } from 'src/app-services';
 
 const mockPrismaService = {
   tax: {
@@ -21,6 +22,7 @@ describe('TaxService', () => {
       providers: [
         TaxService,
         { provide: PrismaService, useValue: mockPrismaService },
+        { provide: TaxCalculatorService, useValue: {} },
       ],
     }).compile();
 

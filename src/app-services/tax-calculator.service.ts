@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 
 @Injectable()
@@ -15,6 +15,10 @@ export class TaxCalculatorService {
     const taxes = await this.prismaService.tax.findMany({
       where: { id: { in: taxIds } },
     });
+
+    if (taxes.length === 0 && taxIds.length > 0) {
+      throw new BadRequestException('Invalid taxId found');
+    }
 
     const { totalTaxFixed, totalTaxPercentage } = taxes.reduce(
       (acc, { isFixed, rate }) => {
