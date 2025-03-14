@@ -48,9 +48,9 @@ describe('TaxCalculatorService', () => {
       taxIds,
     });
 
-    expect(result.after_tax_total).toBe(59);
+    expect(result.after_rounding_tax).toBe(59);
     expect(result.rounding).toBe(0.5);
-    expect(result.before_tax_total).toBe(58.5);
+    expect(result.before_rounding_tax).toBe(58.5);
 
     expect(mockPrismaService.tax.findMany).toHaveBeenCalledWith({
       where: { id: { in: taxIds } },
@@ -69,9 +69,9 @@ describe('TaxCalculatorService', () => {
       taxIds,
     });
 
-    expect(result.after_tax_total).toBe(100);
+    expect(result.after_rounding_tax).toBe(100);
     expect(result.rounding).toBeCloseTo(0.0, 2);
-    expect(result.before_tax_total).toBe(100);
+    expect(result.before_rounding_tax).toBe(100);
 
     expect(mockPrismaService.tax.findMany).toHaveBeenCalledWith({
       where: { id: { in: taxIds } },
@@ -91,9 +91,9 @@ describe('TaxCalculatorService', () => {
       taxIds,
     });
 
-    expect(result.after_tax_total).toBe(105);
+    expect(result.after_rounding_tax).toBe(105);
     expect(result.rounding).toBeCloseTo(0.0, 2);
-    expect(result.before_tax_total).toBe(105);
+    expect(result.before_rounding_tax).toBe(105);
 
     expect(mockPrismaService.tax.findMany).toHaveBeenCalledWith({
       where: { id: { in: taxIds } },
@@ -113,9 +113,9 @@ describe('TaxCalculatorService', () => {
       taxIds,
     });
 
-    expect(result.after_tax_total).toBe(43);
+    expect(result.after_rounding_tax).toBe(43);
     expect(result.rounding).toBe(0.2);
-    expect(result.before_tax_total).toBe(42.8);
+    expect(result.before_rounding_tax).toBe(42.8);
 
     expect(mockPrismaService.tax.findMany).toHaveBeenCalledWith({
       where: { id: { in: taxIds } },
@@ -135,9 +135,9 @@ describe('TaxCalculatorService', () => {
       taxIds,
     });
 
-    expect(result.after_tax_total).toBe(111);
+    expect(result.after_rounding_tax).toBe(111);
     expect(result.rounding).toBe(0.75);
-    expect(result.before_tax_total).toBe(110.25);
+    expect(result.before_rounding_tax).toBe(110.25);
 
     expect(mockPrismaService.tax.findMany).toHaveBeenCalledWith({
       where: { id: { in: taxIds } },

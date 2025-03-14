@@ -44,9 +44,9 @@ export class TaxCalculatorService {
     const total_price = sub_total + rounding;
 
     return {
-      after_tax_total: total_price,
+      after_rounding_tax: total_price,
       rounding,
-      before_tax_total: sub_total,
+      before_rounding_tax: sub_total,
     };
   };
 }

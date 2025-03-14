@@ -19,6 +19,7 @@ import {
   OrderItemValidPipe,
   TableAvailabilityPipe,
   TaxValidPipe,
+  TotalPriceValidPipe,
 } from './pipe';
 
 @UseGuards(JwtGuard)
@@ -30,7 +31,12 @@ export class OrderController {
   @Post()
   createOrder(
     @GetUser('id') userId: number,
-    @Body(TableAvailabilityPipe, OrderItemValidPipe, TaxValidPipe)
+    @Body(
+      TableAvailabilityPipe,
+      OrderItemValidPipe,
+      TaxValidPipe,
+      TotalPriceValidPipe,
+    )
     dto: CreateOrderDto,
   ) {
     return this.orderService.createOrder(userId, dto);
@@ -56,7 +62,12 @@ export class OrderController {
   editOrderById(
     @GetUser('id') userId: number,
     @Param('id', ParseIntPipe) orderId: number,
-    @Body(TableAvailabilityPipe, OrderItemValidPipe, TaxValidPipe)
+    @Body(
+      TableAvailabilityPipe,
+      OrderItemValidPipe,
+      TaxValidPipe,
+      TotalPriceValidPipe,
+    )
     dto: EditOrderDto,
   ) {
     return this.orderService.editOrderById(userId, orderId, dto);
