@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateTaxDto, EditTaxDto } from './dto';
+import { CalculateTaxDto, CreateTaxDto, EditTaxDto } from './dto';
+import { TaxCalculatorService } from 'src/app-services';
 
 @Injectable()
 export class TaxService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly taxCalculatorService: TaxCalculatorService,
+  ) {}
 
   async createTax(userId: number, dto: CreateTaxDto) {
     const tax = await this.prismaService.tax.create({
@@ -49,5 +53,9 @@ export class TaxService {
       },
     });
     return tax;
+  }
+
+  async calculateTax(dto: CalculateTaxDto) {
+    return await this.taxCalculatorService.calculate(dto);
   }
 }

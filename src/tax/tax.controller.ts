@@ -14,7 +14,7 @@ import {
 import { JwtGuard } from 'src/auth/guard';
 import { TaxService } from './tax.service';
 import { GetUser } from 'src/auth/decorator';
-import { CreateTaxDto, EditTaxDto } from './dto';
+import { CalculateTaxDto, CreateTaxDto, EditTaxDto } from './dto';
 
 @UseGuards(JwtGuard)
 @Controller('tax')
@@ -60,5 +60,12 @@ export class TaxController {
     @Param('id', ParseIntPipe) taxId: number,
   ) {
     return this.taxService.deleteTaxById(userId, taxId);
+  }
+
+  // calculate tax
+  @HttpCode(HttpStatus.OK)
+  @Post('calculate')
+  calculateTax(@Body() dto: CalculateTaxDto) {
+    return this.taxService.calculateTax(dto);
   }
 }
