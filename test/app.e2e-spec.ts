@@ -937,6 +937,8 @@ describe('App e2e', () => {
             tableId: 99,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -966,6 +968,8 @@ describe('App e2e', () => {
             tableId: table_id_b,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -997,6 +1001,8 @@ describe('App e2e', () => {
             tableId: table_id_a,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -1021,6 +1027,8 @@ describe('App e2e', () => {
             tableId: table_id_a,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -1050,6 +1058,8 @@ describe('App e2e', () => {
             tableId: table_id_a,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -1080,6 +1090,8 @@ describe('App e2e', () => {
           tableId: table_id_a,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
+          rounding: 0.5, // !
+          taxIds: [1], // !
           subtotal: 10.01, // price aren't match
           totalPrice: 10.01, // price aren't match
           orderItems: [
@@ -1122,6 +1134,8 @@ describe('App e2e', () => {
           tableId: table_id_a,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
+          rounding: 0.5, // !
+          taxIds: [1], // !
           subtotal: 10.01, // price aren't match
           totalPrice: 10.01, // price aren't match
           orderItems: [],
@@ -1166,6 +1180,8 @@ describe('App e2e', () => {
             tableId: 99,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -1197,6 +1213,8 @@ describe('App e2e', () => {
             tableId: table_id_b,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -1230,6 +1248,8 @@ describe('App e2e', () => {
             tableId: table_id_a,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -1256,6 +1276,8 @@ describe('App e2e', () => {
             tableId: table_id_a,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -1287,6 +1309,8 @@ describe('App e2e', () => {
             tableId: table_id_a,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [
@@ -1318,6 +1342,8 @@ describe('App e2e', () => {
           tableId: table_id_a,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
+          rounding: 0.5, // !
+          taxIds: [1], // !
           subtotal: 10.01, // price aren't match
           totalPrice: 10.01, // price aren't match
           orderItems: [
@@ -1351,6 +1377,8 @@ describe('App e2e', () => {
             tableId: table_id_c,
             type: OrderType.POSTPAID,
             paymentMethod: PaymentMethod.CASH,
+            rounding: 0.5, // !
+            taxIds: [1], // !
             subtotal: 10.01, // price aren't match
             totalPrice: 10.01, // price aren't match
             orderItems: [

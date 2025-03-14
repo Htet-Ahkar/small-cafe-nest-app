@@ -50,7 +50,7 @@ npm run start:dev
 
 Codebase Structure
 
-```
+<!-- ```
 /project-root
 ├── src/ # Main application code
 │ ├── modules/ # Feature modules
@@ -63,7 +63,7 @@ Codebase Structure
 ├── package.json # Dependencies and scripts
 ├── tsconfig.json # TypeScript configuration
 └── README.md # Project overview
-```
+``` -->
 
 Useful Commands
 

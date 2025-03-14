@@ -112,6 +112,8 @@ describe('OrderService', () => {
           paymentMethod: PaymentMethod.CASH,
           subtotal: 10.01,
           totalPrice: 10.01,
+          rounding: 0.5, // !
+          taxIds: [1], // !
           orderItems: [
             {
               productId: 1,
@@ -165,6 +167,8 @@ describe('OrderService', () => {
           tableId: 1,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
+          rounding: 0.5, // !
+          taxIds: [1], // !
           subtotal: 10.01,
           totalPrice: 10.01,
           orderItems: [
@@ -260,6 +264,8 @@ describe('OrderService', () => {
           tableId: 1,
           type: OrderType.POSTPAID,
           paymentMethod: PaymentMethod.CASH,
+          rounding: 0.5, // !
+          taxIds: [1], // !
           subtotal: 10.01,
           totalPrice: 10.01,
           orderItems: [

@@ -22,6 +22,8 @@ const mockValue = {
   tableId: 1,
   type: OrderType.POSTPAID,
   paymentMethod: PaymentMethod.CASH,
+  rounding: 0.25,
+  taxIds: [1], // 7% tax
   subtotal: 10,
   totalPrice: 10,
   orderItems: [

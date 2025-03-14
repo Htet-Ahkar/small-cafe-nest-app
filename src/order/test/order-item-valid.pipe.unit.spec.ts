@@ -19,8 +19,10 @@ describe('OrderItemValidPipe', () => {
     tableId: 1,
     type: OrderType.POSTPAID,
     paymentMethod: PaymentMethod.CASH,
-    subtotal: 10.01,
-    totalPrice: 10.01,
+    subtotal: 125,
+    totalPrice: 134,
+    rounding: 0.25,
+    taxIds: [1], // 7% tax
     orderItems: [
       { productId: 3, quantity: 1, price: 35 },
       { productId: 4, quantity: 2, price: 40 },
@@ -111,11 +113,11 @@ describe('OrderItemValidPipe', () => {
     });
   });
 
-  it('should passif all order items are valid', async () => {
+  it('should pass if all order items are valid', async () => {
     const productId = 3;
 
     mockPrismaService.product.findFirst.mockResolvedValue({
-      productId: 3,
+      productId,
       quantity: 1,
       price: 30,
     });
