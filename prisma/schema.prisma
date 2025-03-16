@@ -18,6 +18,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Admin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}
+
 model User {
   id        Int      @id @default(autoincrement())
   createdAt DateTime @default(now())
@@ -28,10 +34,11 @@ model User {
   hash  String
 
   // data
+  tier        UserTier @default(LIMITED) //* only admin can change
   userName    String?
   firstName   String?
   lastName    String?
-  isAavilable Boolean @default(false)
+  isAavilable Boolean  @default(false)
 
   categories Category[]
   products   Product[]
@@ -40,6 +47,11 @@ model User {
   Tax        Tax[]
 
   @@map("users")
+}
+
+enum UserTier {
+  LIMITED
+  FREE
 }
 
 model Category {
